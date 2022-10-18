@@ -15,7 +15,7 @@ ANTMAN_VER="v1.0"
 
 # A function to showcase the options provided for args-based usage.
 helpmenu() {
-	echo -e "\e[1m
+    echo -e "\e[1m
 *** A Nonsensical Toolchain Manager $ANTMAN_VER, by Dakkshesh07 ***
 Usage :
       $0 [args]
@@ -48,212 +48,212 @@ Arguments :
 
 # A Function to check if package exists
 pkg_check() {
-	if ! command -v "$1" --help &>/dev/null; then
-		echo "$1: No"
-		echo "Error: $1 not found!"
-		exit 1
-	else
-		echo "$1: yes"
-	fi
+    if ! command -v "$1" --help &>/dev/null; then
+        echo "$1: No"
+        echo "Error: $1 not found!"
+        exit 1
+    else
+        echo "$1: yes"
+    fi
 }
 
 # A Function to fetch/download Neutron clang builds from remote repos
 sync_tar() {
-	echo -e "\e[1m
+    echo -e "\e[1m
 Checking for system requirements..."
-	pkg_check "zstd"
-	pkg_check "tar"
-	pkg_check "wget"
-	pkg_check "sha256sum"
+    pkg_check "zstd"
+    pkg_check "tar"
+    pkg_check "wget"
+    pkg_check "sha256sum"
 
-	echo -e "\e[1m
+    echo -e "\e[1m
 Fetching build info..."
-	echo "Requested Tag: $1"
+    echo "Requested Tag: $1"
 
-	if [[ $1 == "latest" ]]; then
-		r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
-		echo "Latest Tag: $r_tag"
-	else
-		if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt" -O- >/dev/null; then
-			echo "Error: $1 is not a valid tag"
-			exit 1
-		fi
-		r_tag=$1
-	fi
+    if [[ $1 == "latest" ]]; then
+        r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
+        echo "Latest Tag: $r_tag"
+    else
+        if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt" -O- >/dev/null; then
+            echo "Error: $1 is not a valid tag"
+            exit 1
+        fi
+        r_tag=$1
+    fi
 
-	clang_ver=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 clang-ver | tail -n1)
-	b_date=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 date | tail -n1)
-	llvm_c=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 llvm-commit | tail -n1)
-	binutils_ver=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 binutils-ver | tail -n1)
-	binutils_c=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 binutils-commit | tail -n1)
-	h_glibc=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 host-glibc | tail -n1)
-	t_size=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 size | tail -n1)
-	t_shasum=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 shasum | tail -n1)
+    clang_ver=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 clang-ver | tail -n1)
+    b_date=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 date | tail -n1)
+    llvm_c=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 llvm-commit | tail -n1)
+    binutils_ver=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 binutils-ver | tail -n1)
+    binutils_c=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 binutils-commit | tail -n1)
+    h_glibc=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 host-glibc | tail -n1)
+    t_size=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 size | tail -n1)
+    t_shasum=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 shasum | tail -n1)
 
-	echo "Build Date: $b_date"
-	echo "Clang Version: $clang_ver"
-	echo "LLVM commit at: $llvm_c"
-	echo "Binutils Version: $binutils_ver"
-	echo "Binutils commit at: $binutils_c"
-	echo "Glibc requirement: $h_glibc"
-	echo "Build size: $t_size"
-	echo "Build sha256sum: $t_shasum"
+    echo "Build Date: $b_date"
+    echo "Clang Version: $clang_ver"
+    echo "LLVM commit at: $llvm_c"
+    echo "Binutils Version: $binutils_ver"
+    echo "Binutils commit at: $binutils_c"
+    echo "Glibc requirement: $h_glibc"
+    echo "Build size: $t_size"
+    echo "Build sha256sum: $t_shasum"
 
-	echo -e "\e[1m
+    echo -e "\e[1m
 Fetching build tar..."
-	wget --quiet --show-progress "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/$r_tag/neutron-clang-$r_tag.tar.zst"
+    wget --quiet --show-progress "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/$r_tag/neutron-clang-$r_tag.tar.zst"
 
-	echo -e "\e[1m
+    echo -e "\e[1m
 Checking file integrity of the tar..."
-	if ! echo "$t_shasum neutron-clang-$r_tag.tar.zst" | sha256sum -c -; then
-		echo "Error: File integrity check failed" >&2
-		exit 1
-	fi
+    if ! echo "$t_shasum neutron-clang-$r_tag.tar.zst" | sha256sum -c -; then
+        echo "Error: File integrity check failed" >&2
+        exit 1
+    fi
 
-	echo -e "\e[1m
+    echo -e "\e[1m
 Extracting tar..."
-	tar -I zstd -xf "neutron-clang-$r_tag.tar.zst"
+    tar -I zstd -xf "neutron-clang-$r_tag.tar.zst"
 
-	wget --quiet -O build.info "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt"
-	echo -e "\n[tag]\n$r_tag" >>"build.info"
+    wget --quiet -O build.info "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt"
+    echo -e "\n[tag]\n$r_tag" >>"build.info"
 
-	echo -e "\e[1m
+    echo -e "\e[1m
 Cleaning up..."
-	rm -rf "neutron-clang-$r_tag.tar.zst"
+    rm -rf "neutron-clang-$r_tag.tar.zst"
 }
 
 update_check() {
-	echo -e "\e[1m
+    echo -e "\e[1m
 Checking for system requirements..."
-	pkg_check "wget"
-	echo -e "\e[1m
+    pkg_check "wget"
+    echo -e "\e[1m
 Checking for updates..."
-	l_tag=$(grep -A1 tag build.info | tail -n1)
-	r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
-	if [[ $l_tag == "$r_tag" ]]; then
-		echo "Already up-to-date!"
-		exit 0
-	else
-		echo "New update found!"
-		echo "Update tag: $r_tag"
-		echo -e "\nRun $0 -Uy to upgrade"
-	fi
+    l_tag=$(grep -A1 tag build.info | tail -n1)
+    r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
+    if [[ $l_tag == "$r_tag" ]]; then
+        echo "Already up-to-date!"
+        exit 0
+    else
+        echo "New update found!"
+        echo "Update tag: $r_tag"
+        echo -e "\nRun $0 -Uy to upgrade"
+    fi
 }
 
 delete() {
-	c_dir=$(pwd)
-	echo -e "\e[1m
+    c_dir=$(pwd)
+    echo -e "\e[1m
 Cleaning toolchain files..."
-	echo "Everything in $c_dir/ except this script itself would be deleted!"
-	while true; do
-		read -rp "Proceed? [Y/N] " yn
-		case $yn in
-		[Yy]*)
-			echo "Cleaning..."
-			find . ! -name "$(basename "$0")" -delete
-			break
-			;;
-		[Nn]*) exit 0 ;;
-		*) echo "Please answer yes or no." ;;
-		esac
-	done
+    echo "Everything in $c_dir/ except this script itself would be deleted!"
+    while true; do
+        read -rp "Proceed? [Y/N] " yn
+        case $yn in
+            [Yy]*)
+                echo "Cleaning..."
+                find . ! -name "$(basename "$0")" -delete
+                break
+                ;;
+            [Nn]*) exit 0 ;;
+            *) echo "Please answer yes or no." ;;
+        esac
+    done
 }
 
 upgrade_build() {
-	echo -e "\e[1m
+    echo -e "\e[1m
 Checking for system requirements..."
-	pkg_check "wget"
-	echo -e "\e[1m
+    pkg_check "wget"
+    echo -e "\e[1m
 Checking for updates..."
-	l_tag=$(grep -A1 tag build.info | tail -n1)
-	if [[ $1 == "latest" ]]; then
-		r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
-	else
-		if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt" -O- >/dev/null; then
-			echo "Error: $1 is not a valid tag"
-			exit 1
-		fi
-		r_tag=$1
-	fi
-	if [[ $l_tag == "$r_tag" ]]; then
-		echo "Nothing to do, Already up-to-date"
-		exit 0
-	elif [[ $r_tag -lt $l_tag ]]; then
-		echo "Error: The requested tag ($r_tag) is older than the installed toolchain build ($l_tag)"
-		exit 1
-	else
-		echo "New update found!"
-		echo "New tag: $r_tag"
-		echo "Removing old toolchain files using $0 -D"
-		delete
-		echo "Downloading new toolchain build using $0 -S=$r_tag"
-		sync_tar "$r_tag"
-		echo -e "\nToolchain upgraded to $r_tag build!"
-	fi
+    l_tag=$(grep -A1 tag build.info | tail -n1)
+    if [[ $1 == "latest" ]]; then
+        r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
+    else
+        if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt" -O- >/dev/null; then
+            echo "Error: $1 is not a valid tag"
+            exit 1
+        fi
+        r_tag=$1
+    fi
+    if [[ $l_tag == "$r_tag" ]]; then
+        echo "Nothing to do, Already up-to-date"
+        exit 0
+    elif [[ $r_tag -lt $l_tag ]]; then
+        echo "Error: The requested tag ($r_tag) is older than the installed toolchain build ($l_tag)"
+        exit 1
+    else
+        echo "New update found!"
+        echo "New tag: $r_tag"
+        echo "Removing old toolchain files using $0 -D"
+        delete
+        echo "Downloading new toolchain build using $0 -S=$r_tag"
+        sync_tar "$r_tag"
+        echo -e "\nToolchain upgraded to $r_tag build!"
+    fi
 }
 
 show_info() {
-	echo -e "\e[1m
+    echo -e "\e[1m
 Getting toolchain information from build.info...\n"
-	echo "Build date: $(grep -A1 date build.info | tail -n1)"
-	echo "Build tag: $(grep -A1 tag build.info | tail -n1)"
-	echo "Clang version: $(grep -A1 clang-ver build.info | tail -n1)"
-	echo "LLVM commit at: $(grep -A1 llvm-commit build.info | tail -n1)"
-	echo "Binutils version: $(grep -A1 binutils-ver build.info | tail -n1)"
-	echo "Binutils commit at: $(grep -A1 binutils-commit build.info | tail -n1)"
-	echo "Glibc requirement: $(grep -A1 host-glibc build.info | tail -n1)"
+    echo "Build date: $(grep -A1 date build.info | tail -n1)"
+    echo "Build tag: $(grep -A1 tag build.info | tail -n1)"
+    echo "Clang version: $(grep -A1 clang-ver build.info | tail -n1)"
+    echo "LLVM commit at: $(grep -A1 llvm-commit build.info | tail -n1)"
+    echo "Binutils version: $(grep -A1 binutils-ver build.info | tail -n1)"
+    echo "Binutils commit at: $(grep -A1 binutils-commit build.info | tail -n1)"
+    echo "Glibc requirement: $(grep -A1 host-glibc build.info | tail -n1)"
 }
 
 for arg in "$@"; do
-	case "${arg}" in
-	"-S"*)
-		tag="${arg#*-S}"
-		tag=${tag:1}
-		if [[ -z $tag ]]; then
-			tag="latest"
-		fi
-		sync_tar $tag
-		echo -e "\nToolchain build $r_tag synced!"
-		exit 0
-		;;
-	"-U")
-		update_check
-		exit 0
-		;;
-	"-Uy"*)
-		u_tag="${arg#*-Uy}"
-		u_tag=${u_tag:1}
-		if [[ -z $u_tag ]]; then
-			u_tag="latest"
-		fi
-		upgrade_build $u_tag
-		exit 0
-		;;
-	"-D")
-		delete
-		exit 0
-		;;
-	"-I")
-		show_info
-		exit 0
-		;;
-	"--version")
-		echo "A Nonsensical Toolchain Manager $ANTMAN_VER, by Dakkshesh07"
-		exit 0
-		;;
-	"--help")
-		helpmenu
-		exit 0
-		;;
-	"-H")
-		helpmenu
-		exit 0
-		;;
-	*)
-		helpmenu
-		exit 1
-		;;
-	esac
+    case "${arg}" in
+        "-S"*)
+            tag="${arg#*-S}"
+            tag=${tag:1}
+            if [[ -z $tag ]]; then
+                tag="latest"
+            fi
+            sync_tar $tag
+            echo -e "\nToolchain build $r_tag synced!"
+            exit 0
+            ;;
+        "-U")
+            update_check
+            exit 0
+            ;;
+        "-Uy"*)
+            u_tag="${arg#*-Uy}"
+            u_tag=${u_tag:1}
+            if [[ -z $u_tag ]]; then
+                u_tag="latest"
+            fi
+            upgrade_build $u_tag
+            exit 0
+            ;;
+        "-D")
+            delete
+            exit 0
+            ;;
+        "-I")
+            show_info
+            exit 0
+            ;;
+        "--version")
+            echo "A Nonsensical Toolchain Manager $ANTMAN_VER, by Dakkshesh07"
+            exit 0
+            ;;
+        "--help")
+            helpmenu
+            exit 0
+            ;;
+        "-H")
+            helpmenu
+            exit 0
+            ;;
+        *)
+            helpmenu
+            exit 1
+            ;;
+    esac
 done
 
 helpmenu
