@@ -63,7 +63,6 @@ sync_tar() {
 Checking for system requirements..."
 	pkg_check "zstd"
 	pkg_check "tar"
-	pkg_check "curl"
 	pkg_check "wget"
 	pkg_check "sha256sum"
 
@@ -72,24 +71,24 @@ Fetching build info..."
 	echo "Requested Tag: $1"
 
 	if [[ $1 == "latest" ]]; then
-		r_tag=$(curl --silent "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
+		r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
 		echo "Latest Tag: $r_tag"
 	else
-		if ! curl --output /dev/null --silent --head --fail "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt"; then
+		if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt" -O- >/dev/null; then
 			echo "Error: $1 is not a valid tag"
 			exit 1
 		fi
 		r_tag=$1
 	fi
 
-	clang_ver=$(curl --silent "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 clang-ver | tail -n1)
-	b_date=$(curl --silent "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 date | tail -n1)
-	llvm_c=$(curl --silent "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 llvm-commit | tail -n1)
-	binutils_ver=$(curl --silent "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 binutils-ver | tail -n1)
-	binutils_c=$(curl --silent "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 binutils-commit | tail -n1)
-	h_glibc=$(curl --silent "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 host-glibc | tail -n1)
-	t_size=$(curl --silent "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 size | tail -n1)
-	t_shasum=$(curl --silent "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 shasum | tail -n1)
+	clang_ver=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 clang-ver | tail -n1)
+	b_date=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 date | tail -n1)
+	llvm_c=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 llvm-commit | tail -n1)
+	binutils_ver=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 binutils-ver | tail -n1)
+	binutils_c=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 binutils-commit | tail -n1)
+	h_glibc=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 host-glibc | tail -n1)
+	t_size=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 size | tail -n1)
+	t_shasum=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" | grep -A1 shasum | tail -n1)
 
 	echo "Build Date: $b_date"
 	echo "Clang Version: $clang_ver"
@@ -126,11 +125,11 @@ Cleaning up..."
 update_check() {
 	echo -e "\e[1m
 Checking for system requirements..."
-	pkg_check "curl"
+	pkg_check "wget"
 	echo -e "\e[1m
 Checking for updates..."
 	l_tag=$(grep -A1 tag build.info | tail -n1)
-	r_tag=$(curl --silent "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
+	r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
 	if [[ $l_tag == "$r_tag" ]]; then
 		echo "Already up-to-date!"
 		exit 0
@@ -163,14 +162,14 @@ Cleaning toolchain files..."
 upgrade_build() {
 	echo -e "\e[1m
 Checking for system requirements..."
-	pkg_check "curl"
+	pkg_check "wget"
 	echo -e "\e[1m
 Checking for updates..."
 	l_tag=$(grep -A1 tag build.info | tail -n1)
 	if [[ $1 == "latest" ]]; then
-		r_tag=$(curl --silent "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
+		r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
 	else
-		if ! curl --output /dev/null --silent --head --fail "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt"; then
+		if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt" -O- >/dev/null; then
 			echo "Error: $1 is not a valid tag"
 			exit 1
 		fi
