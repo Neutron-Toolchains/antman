@@ -57,6 +57,28 @@ pkg_check() {
     fi
 }
 
+# A function for converting dated build tags to unix timestamps
+tag_to_unix_ts() {
+    local dt yr mt dy
+    dt="$1"
+    yr=${dt:4:4}
+    mt=${dt:2:2}
+    dy=${dt::2}
+    date -d "$yr-$mt-$dy" +%s
+}
+
+# A function to compare timestamps
+can_update() {
+    local tag_a tag_b
+    tag_a=$(tag_to_unix_ts "$1")
+    tag_b=$(tag_to_unix_ts "$2")
+    if [[ $tag_a -lt $tag_b ]]; then
+        true
+    elif [[ $tag_b -lt $tag_a ]]; then
+        false
+    fi
+}
+
 # A Function to fetch/download Neutron clang builds from remote repos
 sync_tar() {
     echo -e "\e[1m
@@ -133,10 +155,12 @@ Checking for updates..."
     if [[ $l_tag == "$r_tag" ]]; then
         echo "Already up-to-date!"
         exit 0
-    else
+    elif can_update "$l_tag" "$r_tag"; then
         echo "New update found!"
         echo "Update tag: $r_tag"
         echo -e "\nRun $0 -Uy to upgrade"
+    else
+        echo "Error: The requested tag ($r_tag) is older than the installed toolchain build ($l_tag)"
     fi
 }
 
@@ -178,10 +202,7 @@ Checking for updates..."
     if [[ $l_tag == "$r_tag" ]]; then
         echo "Nothing to do, Already up-to-date"
         exit 0
-    elif [[ $r_tag -lt $l_tag ]]; then
-        echo "Error: The requested tag ($r_tag) is older than the installed toolchain build ($l_tag)"
-        exit 1
-    else
+    elif can_update "$l_tag" "$r_tag"; then
         echo "New update found!"
         echo "New tag: $r_tag"
         echo "Removing old toolchain files using $0 -D"
@@ -189,6 +210,9 @@ Checking for updates..."
         echo "Downloading new toolchain build using $0 -S=$r_tag"
         sync_tar "$r_tag"
         echo -e "\nToolchain upgraded to $r_tag build!"
+    else
+        echo "Error: The requested tag ($r_tag) is older than the installed toolchain build ($l_tag)"
+        exit 1
     fi
 }
 
