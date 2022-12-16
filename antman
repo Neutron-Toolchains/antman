@@ -121,6 +121,11 @@ Fetching build info..."
     echo "Build size: $t_size"
     echo "Build sha256sum: $t_shasum"
 
+    if [ "$(printf '%s\n' "$h_glibc" "$(ldd --version | head -n1 | grep -oE '[^ ]+$')" | sort -rV | head -n1)" != "$h_glibc" ]; then
+        echo -e "\e[1m
+Warning: host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version ($h_glibc)"
+    fi
+
     echo -e "\e[1m
 Fetching build tar..."
     wget --quiet --show-progress "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/$r_tag/neutron-clang-$r_tag.tar.zst"
