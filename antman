@@ -43,7 +43,9 @@ Arguments :
 
  --noconfirm  : Do not ask for confirmation.
 
- -H/--help    : Show this help menu.
+ --help       : Show this help menu.
+
+ -H           : Alias for --help.
 
  --version    : Show AntMan version."
 }
@@ -282,16 +284,12 @@ for arg in "$@"; do
             echo "A Nonsensical Toolchain Manager $ANTMAN_VER, by Dakkshesh07"
             exit 0
             ;;
-        "--help")
-            helpmenu
-            exit 0
-            ;;
-        "-H")
+        "-H" | "--help")
             helpmenu
             exit 0
             ;;
         *)
-            helpmenu
+            echo "Invalid argument passed: '${arg}' Run '$0 --help' to view available options."
             exit 1
             ;;
     esac
