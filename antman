@@ -20,34 +20,44 @@ helpmenu() {
 Usage :
       $0 [args]
 Arguments :
- -S=<tag>     : Download and sync latest toolchain build from Neutron-Clang repos.
-                By default AntMan will sync latest build,
-                To sync to a specific build pass appropriate build tag in <tag>.
-                Example: $0 -S
-                Example: $0 -S=latest
-                Exmaple: $0 -S=42069420
+ --sync=<tag>   : Download and sync latest toolchain build from Neutron-Clang repos.
+                  By default AntMan will sync latest build,
+                  To sync to a specific build pass appropriate build tag in <tag>.
+                  Example: $0 --sync
+                  Example: $0 --sync=latest
+                  Exmaple: $0 --sync=42069420
 
- -U           : Run a dry check to see if any toolchain update is available on Neutron-Clang repos.
+ -S=<tag>       : Alias for --sync=<tag>
 
- -Uy=<tag>    : Download updated toolchain build from Neutron-Clang repos and upgrade.
-                By default AntMan will upgrade to latest build,
-                To upgrade to a specific build pass appropriate build tag in <tag>.
-                Example: $0 -Uy
-                Example: $0 -Uy=latest
-                Exmaple: $0 -Uy=42069420
+ --checkupdate  : Run a dry check to see if any toolchain update is available on Neutron-Clang repos.
 
- -D           : Delete all clang related files.
-                AntMan script itself wont be deleted when this command is ran.
+ -C             : Alias for --checkupdate
 
- -I           : Show local build information.
+ --update=<tag> : Download updated toolchain build from Neutron-Clang repos and upgrade.
+                  By default AntMan will upgrade to latest build,
+                  To upgrade to a specific build pass appropriate build tag in <tag>.
+                  Example: $0 --update
+                  Example: $0 --update=latest
+                  Exmaple: $0 --update=42069420
 
- --noconfirm  : Do not ask for confirmation.
+ -U=<tag>       : Alias for --update=<tag>
 
- --help       : Show this help menu.
+ --delete       : Delete all clang related files.
+                  AntMan script itself wont be deleted when this command is ran.
 
- -H           : Alias for --help.
+ -D             : Alias for --delete
 
- --version    : Show AntMan version."
+ --info         : Show local build information.
+
+ -I             : Alias for --info
+
+ --noconfirm    : Do not ask for confirmation.
+
+ --help         : Show this help menu.
+
+ -H             : Alias for --help.
+
+ --version      : Show AntMan version."
 }
 
 # A Function to check if package exists
@@ -249,34 +259,32 @@ fi
 
 for arg in "$@"; do
     case "${arg}" in
-        "-S"*)
-            tag="${arg#*-S}"
-            tag=${tag:1}
-            if [[ -z $tag ]]; then
+        "-S"* | "--sync"*)
+            tag="${arg#*=}"
+            if [[ $tag == "-S" ]] || [[ $tag == "--sync" ]]; then
                 tag="latest"
             fi
             sync_tar $tag
             echo -e "\nToolchain build $r_tag synced!"
             exit 0
             ;;
-        "-U")
+        "--checkupdates" | "-C")
             update_check
             exit 0
             ;;
-        "-Uy"*)
-            u_tag="${arg#*-Uy}"
-            u_tag=${u_tag:1}
-            if [[ -z $u_tag ]]; then
+        "-U"* | "--update"*)
+            u_tag="${arg#*=}"
+            if [[ $u_tag == "-U" ]] || [[ $u_tag == "--update" ]]; then
                 u_tag="latest"
             fi
             upgrade_build $u_tag
             exit 0
             ;;
-        "-D")
+        "-D" | "--delete")
             delete
             exit 0
             ;;
-        "-I")
+        "-I" | "--info")
             show_info
             exit 0
             ;;
