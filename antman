@@ -16,7 +16,7 @@ ANTMAN_VER="v1.1"
 # A function to showcase the options provided for args-based usage.
 helpmenu() {
     echo -e "\e[1m
-*** A Nonsensical Toolchain Manager $ANTMAN_VER, by Dakkshesh07 ***
+*** A Nonsensical Toolchain Manager $ANTMAN_VER, by Dakkshesh07 ***\e[0m
 Usage :
       $0 [args]
 Arguments :
@@ -96,14 +96,14 @@ can_update() {
 # A Function to fetch/download Neutron clang builds from remote repos
 sync_tar() {
     echo -e "\e[1m
-Checking for system requirements..."
+Checking for system requirements...\e[0m"
     pkg_check "zstd"
     pkg_check "tar"
     pkg_check "wget"
     pkg_check "sha256sum"
 
     echo -e "\e[1m
-Fetching build info..."
+Fetching build info...\e[0m"
     echo "Requested Tag: $1"
 
     if [[ $1 == "latest" ]]; then
@@ -137,38 +137,38 @@ Fetching build info..."
 
     if [ "$(printf '%s\n' "$h_glibc" "$(ldd --version | head -n1 | grep -oE '[^ ]+$')" | sort -rV | head -n1)" != "$h_glibc" ]; then
         echo -e "\e[1m
-Warning: host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version ($h_glibc)"
+Warning: host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version ($h_glibc)\e[0m"
     fi
 
     echo -e "\e[1m
-Fetching build tar..."
+Fetching build tar...\e[0m"
     wget --quiet --show-progress "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/$r_tag/neutron-clang-$r_tag.tar.zst"
 
     echo -e "\e[1m
-Checking file integrity of the tar..."
+Checking file integrity of the tar...\e[0m"
     if ! echo "$t_shasum neutron-clang-$r_tag.tar.zst" | sha256sum -c -; then
         echo "Error: File integrity check failed" >&2
         exit 1
     fi
 
     echo -e "\e[1m
-Extracting tar..."
+Extracting tar...\e[0m"
     tar -I zstd -xf "neutron-clang-$r_tag.tar.zst"
 
     wget --quiet -O build.info "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt"
     echo -e "\n[tag]\n$r_tag" >>"build.info"
 
     echo -e "\e[1m
-Cleaning up..."
+Cleaning up...\e[0m"
     rm -rf "neutron-clang-$r_tag.tar.zst"
 }
 
 update_check() {
     echo -e "\e[1m
-Checking for system requirements..."
+Checking for system requirements...\e[0m"
     pkg_check "wget"
     echo -e "\e[1m
-Checking for updates..."
+Checking for updates...\e[0m"
     l_tag=$(grep -A1 tag build.info | tail -n1)
     r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
     if [[ $l_tag == "$r_tag" ]]; then
@@ -186,14 +186,14 @@ Checking for updates..."
 delete() {
     c_dir=$(pwd)
     echo -e "\e[1m
-Cleaning toolchain files..."
+Cleaning toolchain files...\e[0m"
     echo "Everything in $c_dir/ except this script itself would be deleted!"
     if [[ $NOCONFIRM -eq 0 ]]; then
         while true; do
             read -rp "Proceed? [Y/N] " yn
             case $yn in
                 [Yy]*)
-                    echo "Cleaning..."
+                    echo -e "\e[1mCleaning...\e[0m"
                     find . ! -name "$(basename "$0")" -delete
                     break
                     ;;
@@ -202,23 +202,24 @@ Cleaning toolchain files..."
             esac
         done
     else
-        echo "Cleaning..."
+        echo -e "\e[1mCleaning...\e[0m"
         find . ! -name "$(basename "$0")" -delete
     fi
 }
 
 upgrade_build() {
     echo -e "\e[1m
-Checking for system requirements..."
+Checking for system requirements...\e[0m"
     pkg_check "wget"
+
     echo -e "\e[1m
-Checking for updates..."
+Checking for updates...\e[0m"
     l_tag=$(grep -A1 tag build.info | tail -n1)
     if [[ $1 == "latest" ]]; then
         r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
     else
         if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt" -O- >/dev/null; then
-            echo "Error: $1 is not a valid tag"
+            echo -e "\e[1mError: $1 is not a valid tag\e[0m"
             exit 1
         fi
         r_tag=$1
@@ -242,7 +243,8 @@ Checking for updates..."
 
 show_info() {
     echo -e "\e[1m
-Getting toolchain information from build.info...\n"
+Getting toolchain information from build.info...\e[0m"
+    echo ""
     echo "Build date: $(grep -A1 date build.info | tail -n1)"
     echo "Build tag: $(grep -A1 tag build.info | tail -n1)"
     echo "Clang version: $(grep -A1 clang-ver build.info | tail -n1)"
