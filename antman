@@ -41,6 +41,8 @@ Arguments :
 
  -I           : Show local build information.
 
+ --noconfirm  : Do not ask for confirmation.
+
  -H/--help    : Show this help menu.
 
  --version    : Show AntMan version."
@@ -174,18 +176,23 @@ delete() {
     echo -e "\e[1m
 Cleaning toolchain files..."
     echo "Everything in $c_dir/ except this script itself would be deleted!"
-    while true; do
-        read -rp "Proceed? [Y/N] " yn
-        case $yn in
-            [Yy]*)
-                echo "Cleaning..."
-                find . ! -name "$(basename "$0")" -delete
-                break
-                ;;
-            [Nn]*) exit 0 ;;
-            *) echo "Please answer yes or no." ;;
-        esac
-    done
+    if [[ $NOCONFIRM -eq 0 ]]; then
+        while true; do
+            read -rp "Proceed? [Y/N] " yn
+            case $yn in
+                [Yy]*)
+                    echo "Cleaning..."
+                    find . ! -name "$(basename "$0")" -delete
+                    break
+                    ;;
+                [Nn]*) exit 0 ;;
+                *) echo "Please answer yes or no." ;;
+            esac
+        done
+    else
+        echo "Cleaning..."
+        find . ! -name "$(basename "$0")" -delete
+    fi
 }
 
 upgrade_build() {
@@ -232,6 +239,11 @@ Getting toolchain information from build.info...\n"
     echo "Binutils commit at: $(grep -A1 binutils-commit build.info | tail -n1)"
     echo "Glibc requirement: $(grep -A1 host-glibc build.info | tail -n1)"
 }
+
+NOCONFIRM=0
+if [[ $* =~ "--noconfirm" ]]; then
+    NOCONFIRM=1
+fi
 
 for arg in "$@"; do
     case "${arg}" in
