@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Written by: dakkshesh07
-# AntMan v1.0 (A Nonsensical Toolchain Manager)
+# AntMan v2.0 (A Nonsensical Toolchain Manager)
 # Copyright (c) 2022 Dakkshesh <dakkshesh5@gmail.com>
 #
 #			GNU GENERAL PUBLIC LICENSE
@@ -11,7 +11,7 @@
 # of this license document, but changing it is not allowed.
 set -e
 
-ANTMAN_VER="v1.1"
+ANTMAN_VER="v2.0"
 
 # A function to showcase the options provided for args-based usage.
 helpmenu() {
