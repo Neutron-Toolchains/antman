@@ -73,12 +73,13 @@ Arguments :
  --version      : Show AntMan version."
 }
 
+# A function to print bold logs
 printlog() {
     echo -e "\e[1m
 $1\e[0m"
 }
 
-# A Function to check if package exists
+# A function to check if package exists
 pkg_check() {
     if ! command -v "$1" --help &>/dev/null; then
         echo "$1: No"
@@ -111,7 +112,7 @@ can_update() {
     fi
 }
 
-# A Function to fetch/download Neutron clang builds from remote repos
+# A function to fetch/download Neutron clang builds from remote repos
 sync_tar() {
     printlog "Checking for system requirements..."
     pkg_check "zstd"
@@ -175,6 +176,7 @@ sync_tar() {
     rm -rf "neutron-clang-$r_tag.tar.zst"
 }
 
+# A function to check for updates
 update_check() {
     printlog "Checking for system requirements..."
     pkg_check "wget"
@@ -193,6 +195,7 @@ update_check() {
     fi
 }
 
+# A function to delete toolchain files
 delete() {
     c_dir=$(pwd)
     printlog "Cleaning toolchain files..."
@@ -216,6 +219,7 @@ delete() {
     fi
 }
 
+# A function to install toolchain updates
 upgrade_build() {
     printlog "Checking for system requirements..."
     pkg_check "wget"
@@ -248,6 +252,7 @@ upgrade_build() {
     fi
 }
 
+# A function to get toolchain info
 show_info() {
     printlog "Getting toolchain information from build.info..."
     echo ""
@@ -260,6 +265,7 @@ show_info() {
     echo "Glibc requirement: $(grep -A1 host-glibc build.info | tail -n1)"
 }
 
+# A function to BOLT/un-BOLT toolchain
 boltify() {
     CLANG_BIN=$(basename "$(readlink -f bin/clang)")
     if [[ $1 == "bolt" ]]; then
@@ -287,6 +293,7 @@ boltify() {
     fi
 }
 
+# A function to patch toolchain to workaround old glibc issues
 glibc_patcher() {
     printlog "Checking for system requirements..."
     pkg_check "wget"
