@@ -153,6 +153,7 @@ sync_tar() {
 
     if [ "$(printf '%s\n' "$h_glibc" "$(ldd --version | head -n1 | grep -oE '[^ ]+$')" | sort -rV | head -n1)" != "$h_glibc" ]; then
         printlog "Warning: host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version ($h_glibc)"
+        printlog "Workaround this by patching toolchain using '$0 --patch=glibc'"
     fi
 
     printlog "Fetching build tar..."
