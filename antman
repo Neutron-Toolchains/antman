@@ -42,6 +42,19 @@ Arguments :
 
  -U=<tag>       : Alias for --update=<tag>
 
+ --patch=[bolt|unbolt|glibc]
+                : Patch synced toolchain as per requirments.
+                  Curerently supported patches:
+                    unbolt: Patch toolchain to use non BOLT optimized binaries.
+                    bolt: Patch toolchain to use BOLT optimized binaries (default).
+                    glibc: Patch toolchain to workaround glibc requirments.
+                  Example: $0 --patch=unbolt
+                  Example: $0 --patch=bolt
+                  Example: $0 --patch=glibc
+
+ -P=[bolt|unbolt|glibc]
+                : Alias for --patch=[bolt|unbolt|glibc]
+
  --delete       : Delete all clang related files.
                   AntMan script itself wont be deleted when this command is ran.
 
@@ -60,11 +73,16 @@ Arguments :
  --version      : Show AntMan version."
 }
 
+printlog() {
+    echo -e "\e[1m
+$1\e[0m"
+}
+
 # A Function to check if package exists
 pkg_check() {
     if ! command -v "$1" --help &>/dev/null; then
         echo "$1: No"
-        echo "Error: $1 not found!"
+        printlog "Error: $1 not found!"
         exit 1
     else
         echo "$1: yes"
@@ -95,15 +113,13 @@ can_update() {
 
 # A Function to fetch/download Neutron clang builds from remote repos
 sync_tar() {
-    echo -e "\e[1m
-Checking for system requirements...\e[0m"
+    printlog "Checking for system requirements..."
     pkg_check "zstd"
     pkg_check "tar"
     pkg_check "wget"
     pkg_check "sha256sum"
 
-    echo -e "\e[1m
-Fetching build info...\e[0m"
+    printlog "Fetching build info..."
     echo "Requested Tag: $1"
 
     if [[ $1 == "latest" ]]; then
@@ -136,64 +152,56 @@ Fetching build info...\e[0m"
     echo "Build sha256sum: $t_shasum"
 
     if [ "$(printf '%s\n' "$h_glibc" "$(ldd --version | head -n1 | grep -oE '[^ ]+$')" | sort -rV | head -n1)" != "$h_glibc" ]; then
-        echo -e "\e[1m
-Warning: host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version ($h_glibc)\e[0m"
+        printlog "Warning: host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version ($h_glibc)"
     fi
 
-    echo -e "\e[1m
-Fetching build tar...\e[0m"
+    printlog "Fetching build tar..."
     wget --quiet --show-progress "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/$r_tag/neutron-clang-$r_tag.tar.zst"
 
-    echo -e "\e[1m
-Checking file integrity of the tar...\e[0m"
+    printlog "Checking file integrity of the tar..."
     if ! echo "$t_shasum neutron-clang-$r_tag.tar.zst" | sha256sum -c -; then
-        echo "Error: File integrity check failed" >&2
+        printlog "Error: File integrity check failed" >&2
         exit 1
     fi
 
-    echo -e "\e[1m
-Extracting tar...\e[0m"
+    printlog "Extracting tar..."
     tar -I zstd -xf "neutron-clang-$r_tag.tar.zst"
 
     wget --quiet -O build.info "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt"
     echo -e "\n[tag]\n$r_tag" >>"build.info"
 
-    echo -e "\e[1m
-Cleaning up...\e[0m"
+    printlog "Cleaning up..."
     rm -rf "neutron-clang-$r_tag.tar.zst"
 }
 
 update_check() {
-    echo -e "\e[1m
-Checking for system requirements...\e[0m"
+    printlog "Checking for system requirements..."
     pkg_check "wget"
-    echo -e "\e[1m
-Checking for updates...\e[0m"
+    printlog "Checking for updates..."
     l_tag=$(grep -A1 tag build.info | tail -n1)
     r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
     if [[ $l_tag == "$r_tag" ]]; then
         echo "Already up-to-date!"
         exit 0
     elif can_update "$l_tag" "$r_tag"; then
-        echo "New update found!"
+        printlog "New update found!"
         echo "Update tag: $r_tag"
         echo -e "\nRun $0 -Uy to upgrade"
     else
-        echo "Error: The requested tag ($r_tag) is older than the installed toolchain build ($l_tag)"
+        printlog "Error: The requested tag ($r_tag) is older than the installed toolchain build ($l_tag)"
     fi
 }
 
 delete() {
     c_dir=$(pwd)
-    echo -e "\e[1m
-Cleaning toolchain files...\e[0m"
+    printlog "Cleaning toolchain files..."
     echo "Everything in $c_dir/ except this script itself would be deleted!"
     if [[ $NOCONFIRM -eq 0 ]]; then
         while true; do
             read -rp "Proceed? [Y/N] " yn
             case $yn in
                 [Yy]*)
-                    echo -e "\e[1mCleaning...\e[0m"
+                    printlog "Cleaning..."
                     find . ! -name "$(basename "$0")" -delete
                     break
                     ;;
@@ -202,48 +210,45 @@ Cleaning toolchain files...\e[0m"
             esac
         done
     else
-        echo -e "\e[1mCleaning...\e[0m"
+        printlog "Cleaning..."
         find . ! -name "$(basename "$0")" -delete
     fi
 }
 
 upgrade_build() {
-    echo -e "\e[1m
-Checking for system requirements...\e[0m"
+    printlog "Checking for system requirements..."
     pkg_check "wget"
 
-    echo -e "\e[1m
-Checking for updates...\e[0m"
+    printlog "Checking for updates..."
     l_tag=$(grep -A1 tag build.info | tail -n1)
     if [[ $1 == "latest" ]]; then
         r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
     else
         if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt" -O- >/dev/null; then
-            echo -e "\e[1mError: $1 is not a valid tag\e[0m"
+            printlog "Error: $1 is not a valid tag"
             exit 1
         fi
         r_tag=$1
     fi
     if [[ $l_tag == "$r_tag" ]]; then
-        echo "Nothing to do, Already up-to-date"
+        printlog "Nothing to do, Already up-to-date"
         exit 0
     elif can_update "$l_tag" "$r_tag"; then
-        echo "New update found!"
+        printlog "New update found!"
         echo "New tag: $r_tag"
-        echo "Removing old toolchain files using $0 -D"
+        printlog "Removing old toolchain files using $0 -D"
         delete
-        echo "Downloading new toolchain build using $0 -S=$r_tag"
+        printlog "Downloading new toolchain build using $0 -S=$r_tag"
         sync_tar "$r_tag"
         echo -e "\nToolchain upgraded to $r_tag build!"
     else
-        echo "Error: The requested tag ($r_tag) is older than the installed toolchain build ($l_tag)"
+        printlog "Error: The requested tag ($r_tag) is older than the installed toolchain build ($l_tag)"
         exit 1
     fi
 }
 
 show_info() {
-    echo -e "\e[1m
-Getting toolchain information from build.info...\e[0m"
+    printlog "Getting toolchain information from build.info..."
     echo ""
     echo "Build date: $(grep -A1 date build.info | tail -n1)"
     echo "Build tag: $(grep -A1 tag build.info | tail -n1)"
@@ -252,6 +257,69 @@ Getting toolchain information from build.info...\e[0m"
     echo "Binutils version: $(grep -A1 binutils-ver build.info | tail -n1)"
     echo "Binutils commit at: $(grep -A1 binutils-commit build.info | tail -n1)"
     echo "Glibc requirement: $(grep -A1 host-glibc build.info | tail -n1)"
+}
+
+boltify() {
+    CLANG_BIN=$(basename "$(readlink -f bin/clang)")
+    if [[ $1 == "bolt" ]]; then
+        if [[ -f "bin/${CLANG_BIN}.bolt" ]]; then
+            if [[ -f "bin/${CLANG_BIN}" ]]; then
+                mv bin/"${CLANG_BIN}" bin/"${CLANG_BIN}.org"
+                mv bin/"${CLANG_BIN}.bolt" bin/"${CLANG_BIN}"
+            else
+                printlog "Error: 'bin/${CLANG_BIN}' not found!"
+            fi
+        else
+            printlog "Error: 'bin/${CLANG_BIN}.bolt' not found!"
+        fi
+    elif [[ $1 == "unbolt" ]]; then
+        if [[ -f "bin/${CLANG_BIN}.org" ]]; then
+            if [[ -f "bin/${CLANG_BIN}" ]]; then
+                mv bin/"${CLANG_BIN}" bin/"${CLANG_BIN}.bolt"
+                mv bin/"${CLANG_BIN}.org" bin/"${CLANG_BIN}"
+            else
+                printlog "Error: 'bin/${CLANG_BIN}' not found!"
+            fi
+        else
+            printlog "Error: 'bin/${CLANG_BIN}.org' not found!"
+        fi
+    fi
+}
+
+glibc_patcher() {
+    printlog "Checking for system requirements..."
+    pkg_check "wget"
+    pkg_check "bsdtar"
+    WORK_DIR=$1
+    printlog "Downloading patchelf binary from NixOS repos..."
+    mkdir -p "$HOME"/.patchelf-temp
+    wget -qO- https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | bsdtar -C "$HOME"/.patchelf-temp -xf -
+    mv "$HOME"/.patchelf-temp/bin/patchelf "$HOME"/
+    rm -rf "$HOME"/.patchelf-temp
+
+    printlog "Downloading latest glibc libs from ArchLinux repos..."
+    mkdir -p "$HOME"/.neutron-tc/glibc
+    wget -qO- https://archlinux.org/packages/core/x86_64/glibc/download | bsdtar -C "$HOME"/.neutron-tc/glibc -xf -
+    wget -qO- https://archlinux.org/packages/core/x86_64/lib32-glibc/download | bsdtar -C "$HOME"/.neutron-tc/glibc -xf -
+    ln -svf "$HOME"/.neutron-tc/glibc/usr/lib "$HOME"/.neutron-tc/glibc/usr/lib64
+
+    printlog "Patching glibc..."
+    for bin in $(find "$HOME"/.neutron-tc/glibc -type f -exec file {} \; | grep 'ELF .* interpreter' | awk '{print $1}'); do
+        bin="${bin::-1}"
+        echo "Patching: $bin"
+        "$HOME"/patchelf --set-rpath "$HOME"/.neutron-tc/glibc/usr/lib --force-rpath --set-interpreter "$HOME"/.neutron-tc/glibc/usr/lib/ld-linux-x86-64.so.2 "$bin"
+    done
+
+    printlog "Patching Toolchain..."
+    for bin in $(find "$WORK_DIR" -type f -exec file {} \; | grep 'ELF .* interpreter' | awk '{print $1}'); do
+        bin="${bin::-1}"
+        echo "Patching: $bin"
+        "$HOME"/patchelf --add-rpath "$HOME"/.neutron-tc/glibc/usr/lib --force-rpath --set-interpreter "$HOME"/.neutron-tc/glibc/usr/lib/ld-linux-x86-64.so.2 "$bin"
+    done
+
+    printlog "Cleaning..."
+    rm -rf "$HOME"/patchelf
+    printlog "Done"
 }
 
 NOCONFIRM=0
@@ -266,7 +334,7 @@ for arg in "$@"; do
             if [[ $tag == "-S" ]] || [[ $tag == "--sync" ]]; then
                 tag="latest"
             fi
-            sync_tar $tag
+            sync_tar "$tag"
             echo -e "\nToolchain build $r_tag synced!"
             exit 0
             ;;
@@ -279,7 +347,21 @@ for arg in "$@"; do
             if [[ $u_tag == "-U" ]] || [[ $u_tag == "--update" ]]; then
                 u_tag="latest"
             fi
-            upgrade_build $u_tag
+            upgrade_build "$u_tag"
+            exit 0
+            ;;
+        "-P"* | "--patch"*)
+            option="${arg#*=}"
+            if [[ $option == "-P" ]] || [[ $option == "--patch" ]]; then
+                echo "Error: $option requires an argument."
+                exit 1
+            elif [[ $option == "bolt" ]] || [[ $option == "unbolt" ]]; then
+                boltify "$option"
+            elif [[ $option == "glibc" ]]; then
+                glibc_patcher "$(pwd)"
+            else
+                echo -e "\e[1mError: Invalid argument '$1'\e[0m"
+            fi
             exit 0
             ;;
         "-D" | "--delete")
