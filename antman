@@ -255,14 +255,19 @@ upgrade_build() {
 # A function to get toolchain info
 show_info() {
     printlog "Getting toolchain information from build.info..."
-    echo ""
-    echo "Build date: $(grep -A1 date build.info | tail -n1)"
-    echo "Build tag: $(grep -A1 tag build.info | tail -n1)"
-    echo "Clang version: $(grep -A1 clang-ver build.info | tail -n1)"
-    echo "LLVM commit at: $(grep -A1 llvm-commit build.info | tail -n1)"
-    echo "Binutils version: $(grep -A1 binutils-ver build.info | tail -n1)"
-    echo "Binutils commit at: $(grep -A1 binutils-commit build.info | tail -n1)"
-    echo "Glibc requirement: $(grep -A1 host-glibc build.info | tail -n1)"
+    if [[ -f "build.info" ]]; then
+        echo ""
+        echo "Build date: $(grep -A1 date build.info | tail -n1)"
+        echo "Build tag: $(grep -A1 tag build.info | tail -n1)"
+        echo "Clang version: $(grep -A1 clang-ver build.info | tail -n1)"
+        echo "LLVM commit at: $(grep -A1 llvm-commit build.info | tail -n1)"
+        echo "Binutils version: $(grep -A1 binutils-ver build.info | tail -n1)"
+        echo "Binutils commit at: $(grep -A1 binutils-commit build.info | tail -n1)"
+        echo "Glibc requirement: $(grep -A1 host-glibc build.info | tail -n1)"
+    else
+        printlog "Error: build.info not found! Resync the toolchain."
+        exit 1
+    fi
 }
 
 # A function to BOLT/un-BOLT toolchain
