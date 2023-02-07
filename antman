@@ -320,10 +320,10 @@ glibc_patcher() {
     pkg_check "bsdtar"
     WORK_DIR=$1
     printlog "Downloading patchelf binary from NixOS repos..."
-    mkdir -p "$HOME"/.patchelf-temp
-    wget -qO- https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | bsdtar -C "$HOME"/.patchelf-temp -xf -
-    mv "$HOME"/.patchelf-temp/bin/patchelf "$HOME"/
-    rm -rf "$HOME"/.patchelf-temp
+    mkdir -p "$HOME"/.neutron-tc/patchelf-temp
+    wget -qO- https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | bsdtar -C "$HOME"/.neutron-tc/patchelf-temp -xf -
+    mv "$HOME"/.neutron-tc/patchelf-temp/bin/patchelf "$HOME"/.neutron-tc/
+    rm -rf "$HOME"/.neutron-tc/patchelf-temp
 
     printlog "Downloading latest glibc libs from ArchLinux repos..."
     mkdir -p "$HOME"/.neutron-tc/glibc
@@ -335,18 +335,18 @@ glibc_patcher() {
     for bin in $(find "$HOME"/.neutron-tc/glibc -type f -exec file {} \; | grep 'ELF .* interpreter' | awk '{print $1}'); do
         bin="${bin::-1}"
         echo "Patching: $bin"
-        "$HOME"/patchelf --set-rpath "$HOME"/.neutron-tc/glibc/usr/lib --force-rpath --set-interpreter "$HOME"/.neutron-tc/glibc/usr/lib/ld-linux-x86-64.so.2 "$bin"
+        "$HOME"/.neutron-tc/patchelf --set-rpath "$HOME"/.neutron-tc/glibc/usr/lib --force-rpath --set-interpreter "$HOME"/.neutron-tc/glibc/usr/lib/ld-linux-x86-64.so.2 "$bin"
     done
 
     printlog "Patching Toolchain..."
     for bin in $(find "$WORK_DIR" -type f -exec file {} \; | grep 'ELF .* interpreter' | awk '{print $1}'); do
         bin="${bin::-1}"
         echo "Patching: $bin"
-        "$HOME"/patchelf --add-rpath "$HOME"/.neutron-tc/glibc/usr/lib --force-rpath --set-interpreter "$HOME"/.neutron-tc/glibc/usr/lib/ld-linux-x86-64.so.2 "$bin"
+        "$HOME"/.neutron-tc/patchelf --add-rpath "$HOME"/.neutron-tc/glibc/usr/lib --force-rpath --set-interpreter "$HOME"/.neutron-tc/glibc/usr/lib/ld-linux-x86-64.so.2 "$bin"
     done
 
     printlog "Cleaning..."
-    rm -rf "$HOME"/patchelf
+    rm -rf "$HOME"/.neutron-tc/patchelf
     printlog "Done"
 }
 
