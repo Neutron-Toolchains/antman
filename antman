@@ -331,7 +331,7 @@ glibc_patcher() {
     rm -rf "$HOME"/.neutron-tc/patchelf-temp
 
     printlog "Downloading latest glibc libs from ArchLinux repos..."
-    mkdir -p "$HOME"/.neutron-tc/glibc
+    mkdir "$HOME"/.neutron-tc/glibc &>/dev/null || (rm -rf "$HOME"/.neutron-tc/glibc && mkdir "$HOME"/.neutron-tc/glibc)
     wget -qO- https://archlinux.org/packages/core/x86_64/glibc/download | bsdtar -C "$HOME"/.neutron-tc/glibc -xf -
     wget -qO- https://archlinux.org/packages/core/x86_64/lib32-glibc/download | bsdtar -C "$HOME"/.neutron-tc/glibc -xf -
     ln -svf "$HOME"/.neutron-tc/glibc/usr/lib "$HOME"/.neutron-tc/glibc/usr/lib64
