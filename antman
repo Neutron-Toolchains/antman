@@ -279,6 +279,16 @@ boltify() {
         else
             printlog "Error: 'bin/${CLANG_BIN}.bolt' not found!"
         fi
+        if [[ -f "bin/lld.bolt" ]]; then
+            if [[ -f "bin/lld" ]]; then
+                mv bin/lld bin/"lld.org"
+                mv bin/"lld.bolt" bin/lld
+            else
+                printlog "Error: 'bin/lld' not found!"
+            fi
+        else
+            printlog "Warning: 'bin/lld.bolt' not found, Skipped!"
+        fi
     elif [[ $1 == "unbolt" ]]; then
         if [[ -f "bin/${CLANG_BIN}.org" ]]; then
             if [[ -f "bin/${CLANG_BIN}" ]]; then
@@ -289,6 +299,16 @@ boltify() {
             fi
         else
             printlog "Error: 'bin/${CLANG_BIN}.org' not found!"
+        fi
+        if [[ -f "bin/lld.org" ]]; then
+            if [[ -f "bin/lld" ]]; then
+                mv bin/lld bin/"lld.bolt"
+                mv bin/"lld.org" bin/lld
+            else
+                printlog "Error: 'bin/lld' not found!"
+            fi
+        else
+            printlog "Warning: 'bin/lld.org' not found, Skipped!"
         fi
     fi
 }
