@@ -193,6 +193,7 @@ update_check() {
         echo -e "\nRun $0 -Uy to upgrade"
     else
         printlog "Error: The requested tag (${r_tag}) is older than the installed toolchain build (${l_tag})"
+        exit 1
     fi
 }
 
@@ -395,6 +396,7 @@ for arg in "$@"; do
                 glibc_patcher "$(pwd)"
             else
                 echo -e "\e[1mError: Invalid argument '$1'\e[0m"
+                exit 1
             fi
             exit 0
             ;;
