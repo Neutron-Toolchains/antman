@@ -82,12 +82,12 @@ $1\e[0m"
 
 # A function to check if package exists
 pkg_check() {
-    if ! command -v "$1" --help &>/dev/null; then
-        echo "$1: No"
+    if [[ -n "$(command -v "$1")" ]]; then
+        echo "$1: yes"
+    else
+        echo "$1: no"
         printlog "Error: $1 not found!"
         exit 1
-    else
-        echo "$1: yes"
     fi
 }
 
