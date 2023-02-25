@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Written by: dakkshesh07
-# AntMan v2.1 (A Nonsensical Toolchain Manager)
+# AntMan v2.2 (A Nonsensical Toolchain Manager)
 # Copyright (c) 2022 Dakkshesh <dakkshesh5@gmail.com>
 #
 #			GNU GENERAL PUBLIC LICENSE
@@ -12,7 +12,7 @@
 set -e
 shopt -s inherit_errexit
 
-ANTMAN_VER="v2.1"
+ANTMAN_VER="v2.2"
 
 # A function to showcase the options provided for args-based usage.
 helpmenu() {
@@ -140,7 +140,7 @@ sync_tar() {
     llvm_c=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 llvm-commit | tail -n1)
     binutils_ver=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 binutils-ver | tail -n1)
     binutils_c=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 binutils-commit | tail -n1)
-    h_glibc=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 host-glibc | tail -n1)
+    t_glibc=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 host-glibc | tail -n1)
     t_size=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 size | tail -n1)
     t_shasum=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 shasum | tail -n1)
 
@@ -149,12 +149,14 @@ sync_tar() {
     echo "LLVM commit at: ${llvm_c}"
     echo "Binutils Version: ${binutils_ver}"
     echo "Binutils commit at: ${binutils_c}"
-    echo "Glibc requirement: ${h_glibc}"
+    echo "Glibc requirement: ${t_glibc}"
     echo "Build size: ${t_size}"
     echo "Build sha256sum: ${t_shasum}"
 
-    if [[ "$(printf '%s\n' "${h_glibc}" "$(ldd --version | head -n1 | grep -oE '[^ ]+$')" | sort -rV | head -n1)" != "${h_glibc}" ]]; then
-        printlog "Warning: host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version (${h_glibc})"
+    host_glibc="$(ldd --version | head -n1 | grep -oE '[^ ]+$')"
+
+    if [[ ${host_glibc//./} -lt ${t_glibc//./} ]]; then
+        printlog "Warning: host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version (${t_glibc})"
         printlog "Workaround this by patching toolchain using '$0 --patch=glibc'"
     fi
 

@@ -1,4 +1,6 @@
 # AntMan
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/cdaf0c6222a44595adfb04a21e65e4f1)](https://www.codacy.com/gh/Neutron-Toolchains/antman/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Neutron-Toolchains/antman&amp;utm_campaign=Badge_Grade)
+
 **[AntMan](https://github.com/Neutron-Toolchains/antman.git)** `(A Nonsensical Toolchain Manager)` is a manager written in bash, It is used by [Neutron Clang](https://github.com/Neutron-Toolchains/clang-build-catalogue) to download/sync, upgrade and manage toolchain builds.
 
 Here's an exmaple on how to sync latest build using AntMan:
