@@ -12,7 +12,7 @@
 set -e
 shopt -s inherit_errexit
 
-ANTMAN_VER="v2.2"
+ANTMAN_VER="v2.3"
 
 # A function to showcase the options provided for args-based usage.
 helpmenu() {
@@ -66,6 +66,8 @@ Arguments :
  -I             : Alias for --info
 
  --noconfirm    : Do not ask for confirmation.
+
+ --noprogress   : Do not show progress bar.
 
  --help         : Show this help menu.
 
@@ -161,7 +163,7 @@ sync_tar() {
     fi
 
     printlog "Fetching build tar..."
-    wget --quiet --show-progress "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/${r_tag}/neutron-clang-${r_tag}.tar.zst"
+    wget "${WGET_ARGS[@]}" "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/${r_tag}/neutron-clang-${r_tag}.tar.zst"
 
     printlog "Checking file integrity of the tar..."
     if ! echo "${t_shasum} neutron-clang-${r_tag}.tar.zst" | sha256sum -c -; then
@@ -362,6 +364,11 @@ glibc_patcher() {
 NOCONFIRM=0
 if [[ $* =~ "--noconfirm" ]]; then
     NOCONFIRM=1
+fi
+
+WGET_ARGS=("--quiet" "--show-progress")
+if [[ $* =~ "--noprogress" ]]; then
+    WGET_ARGS=("--quiet")
 fi
 
 for arg in "$@"; do
