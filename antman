@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Written by: dakkshesh07
-# AntMan v2.2 (A Nonsensical Toolchain Manager)
+# AntMan v2.4 (A Nonsensical Toolchain Manager)
 # Copyright (c) 2022 Dakkshesh <dakkshesh5@gmail.com>
 #
 #			GNU GENERAL PUBLIC LICENSE
@@ -12,7 +12,7 @@
 set -e
 shopt -s inherit_errexit
 
-ANTMAN_VER="v2.3"
+ANTMAN_VER="v2.4"
 
 # A function to showcase the options provided for args-based usage.
 helpmenu() {
@@ -332,17 +332,22 @@ glibc_patcher() {
     WORK_DIR=$1
     printlog "Downloading patchelf binary from NixOS repos..."
     mkdir -p "${HOME}"/.neutron-tc/patchelf-temp
-    wget -qO- https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | bsdtar -C "${HOME}"/.neutron-tc/patchelf-temp -xf -
+    wget -qO- https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz | bsdtar -C "${HOME}"/.neutron-tc/patchelf-temp -xf -
     mv "${HOME}"/.neutron-tc/patchelf-temp/bin/patchelf "${HOME}"/.neutron-tc/
     rm -rf "${HOME}"/.neutron-tc/patchelf-temp
 
-    printlog "Downloading latest glibc libs from ArchLinux repos..."
+    printlog "Downloading latest libs from ArchLinux repos..."
     mkdir "${HOME}"/.neutron-tc/glibc &>/dev/null || (rm -rf "${HOME}"/.neutron-tc/glibc && mkdir "${HOME}"/.neutron-tc/glibc)
+
     wget -qO- https://archlinux.org/packages/core/x86_64/glibc/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
     wget -qO- https://archlinux.org/packages/core/x86_64/lib32-glibc/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
+
+    wget -qO- https://archlinux.org/packages/core/x86_64/gcc-libs/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
+    wget -qO- https://archlinux.org/packages/core/x86_64/lib32-gcc-libs/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
+
     ln -svf "${HOME}"/.neutron-tc/glibc/usr/lib "${HOME}"/.neutron-tc/glibc/usr/lib64
 
-    printlog "Patching glibc..."
+    printlog "Patching libs..."
     for bin in $(find "${HOME}"/.neutron-tc/glibc -type f -exec file {} \; | grep 'ELF .* interpreter' | awk '{print $1}'); do
         bin="${bin::-1}"
         echo "Patching: ${bin}"
