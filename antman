@@ -332,7 +332,7 @@ glibc_patcher() {
     WORK_DIR=$1
     printlog "Downloading patchelf binary from NixOS repos..."
     mkdir -p "${HOME}"/.neutron-tc/patchelf-temp
-    wget -qO- https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | bsdtar -C "${HOME}"/.neutron-tc/patchelf-temp -xf -
+    wget -qO- https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz | bsdtar -C "${HOME}"/.neutron-tc/patchelf-temp -xf -
     mv "${HOME}"/.neutron-tc/patchelf-temp/bin/patchelf "${HOME}"/.neutron-tc/
     rm -rf "${HOME}"/.neutron-tc/patchelf-temp
 
