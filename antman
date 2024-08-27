@@ -371,7 +371,15 @@ if [[ $* =~ "--noconfirm" ]]; then
     NOCONFIRM=1
 fi
 
-WGET_ARGS=("--quiet" "--show-progress")
+# Extract wget version. Outputs either major version 1, or 2
+WGET_VER=$(wget --version | head -n 1 | cut -d ' ' -f 3 | cut -d '.' -f 1)
+
+if [[ "$WGET_VER" -ge 2 ]]; then
+    WGET_ARGS=("--quiet" "--force-progress")
+else
+    WGET_ARGS=("--quiet" "--show-progress")
+fi
+
 if [[ $* =~ "--noprogress" ]]; then
     WGET_ARGS=("--quiet")
 fi
