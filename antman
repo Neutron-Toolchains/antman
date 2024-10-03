@@ -69,6 +69,8 @@ Arguments :
 
  --noprogress   : Do not show progress bar.
 
+ --noaxel       : Do not use axel to download tars even if available.
+
  --help         : Show this help menu.
 
  -H             : Alias for --help.
@@ -82,14 +84,29 @@ printlog() {
 $1\e[0m"
 }
 
-# A function to check if package exists
+# A function to check if command exists
+cmd_check() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# A function to verify dependencies
 pkg_check() {
-    if [[ -n "$(command -v "$1")" ]]; then
+    if [[ -n $1 ]] && cmd_check "$1"; then
         echo "$1: yes"
     else
         echo "$1: no"
         printlog "Error: $1 not found!"
         exit 1
+    fi
+}
+
+# A function to check axel availability and set the default download utility
+DL_UTILITY="wget"
+axel_check() {
+    if [[ ${NOAXEL} -eq 0 ]] && cmd_check "axel"; then
+        printlog "axel was found on the system and will be used to download the tars quickly..."
+        echo "if you wish to disable this use the --noaxel flag."
+        DL_UTILITY="axel"
     fi
 }
 
@@ -122,6 +139,7 @@ sync_tar() {
     pkg_check "tar"
     pkg_check "wget"
     pkg_check "sha256sum"
+    axel_check
 
     printlog "Fetching build info..."
     echo "Requested Tag: $1"
@@ -163,7 +181,11 @@ sync_tar() {
     fi
 
     printlog "Fetching build tar..."
-    wget "${WGET_ARGS[@]}" "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/${r_tag}/neutron-clang-${r_tag}.tar.zst"
+    if [[ $DL_UTILITY == "axel" ]]; then
+        axel "${AXEL_ARGS[@]}" "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/${r_tag}/neutron-clang-${r_tag}.tar.zst"
+    else
+        wget "${WGET_ARGS[@]}" "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/${r_tag}/neutron-clang-${r_tag}.tar.zst"
+    fi
 
     printlog "Checking file integrity of the tar..."
     if ! echo "${t_shasum} neutron-clang-${r_tag}.tar.zst" | sha256sum -c -; then
@@ -330,21 +352,31 @@ glibc_patcher() {
     pkg_check "wget"
     pkg_check "bsdtar"
     WORK_DIR=$1
+    axel_check
+    fetch_and_uncompress() {
+        rm -rf /tmp/tmp_antman.tar
+        if [[ $DL_UTILITY == "axel" ]]; then
+            axel -q -O"/tmp/tmp_antman.tar" "${1}"
+        else
+            wget -q -O"/tmp/tmp_antman.tar" "${1}"
+        fi
+        bsdtar -C "${HOME}"/.neutron-tc/"${2}" -xf /tmp/tmp_antman.tar
+        rm -rf /tmp/tmp_antman.tar
+    }
+
     printlog "Downloading patchelf binary from NixOS repos..."
+    PATCHELF_VER="0.18.0"
     mkdir -p "${HOME}"/.neutron-tc/patchelf-temp
-    wget -qO- https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz | bsdtar -C "${HOME}"/.neutron-tc/patchelf-temp -xf -
+    fetch_and_uncompress "https://github.com/NixOS/patchelf/releases/download/${PATCHELF_VER}/patchelf-${PATCHELF_VER}-x86_64.tar.gz" patchelf-temp
     mv "${HOME}"/.neutron-tc/patchelf-temp/bin/patchelf "${HOME}"/.neutron-tc/
     rm -rf "${HOME}"/.neutron-tc/patchelf-temp
 
     printlog "Downloading latest libs from ArchLinux repos..."
     mkdir "${HOME}"/.neutron-tc/glibc &>/dev/null || (rm -rf "${HOME}"/.neutron-tc/glibc && mkdir "${HOME}"/.neutron-tc/glibc)
-
-    wget -qO- https://archlinux.org/packages/core/x86_64/glibc/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
-    wget -qO- https://archlinux.org/packages/core/x86_64/lib32-glibc/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
-
-    wget -qO- https://archlinux.org/packages/core/x86_64/gcc-libs/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
-    wget -qO- https://archlinux.org/packages/core/x86_64/lib32-gcc-libs/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
-
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/glibc/download glibc
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/lib32-glibc/download glibc
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/gcc-libs/download glibc
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/lib32-gcc-libs/download glibc
     ln -svf "${HOME}"/.neutron-tc/glibc/usr/lib "${HOME}"/.neutron-tc/glibc/usr/lib64
 
     printlog "Patching libs..."
@@ -371,8 +403,15 @@ if [[ $* =~ "--noconfirm" ]]; then
     NOCONFIRM=1
 fi
 
+NOAXEL=0
+if [[ $* =~ "--noaxel" ]]; then
+    NOAXEL=1
+fi
+
 WGET_ARGS=("--quiet")
+AXEL_ARGS=()
 # Extract wget major version and use supported progress flag accordingly.
+# Also set axel args according to flags passed by user.
 if [[ ! $* =~ "--noprogress" ]]; then
     WGET_VER=$(wget --version | head -n 1 | cut -d ' ' -f 3 | cut -d '.' -f 1)
 
@@ -381,6 +420,8 @@ if [[ ! $* =~ "--noprogress" ]]; then
     else
         WGET_ARGS+=("--show-progress")
     fi
+else
+    AXEL_ARGS=("--quiet")
 fi
 
 for arg in "$@"; do
@@ -390,6 +431,7 @@ for arg in "$@"; do
             if [[ ${tag} == "-S" ]] || [[ ${tag} == "--sync" ]]; then
                 tag="latest"
             fi
+            axel_check
             sync_tar "${tag}"
             echo -e "\nToolchain build ${r_tag} synced!"
             exit 0
