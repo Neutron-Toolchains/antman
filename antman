@@ -371,17 +371,16 @@ if [[ $* =~ "--noconfirm" ]]; then
     NOCONFIRM=1
 fi
 
-# Extract wget version. Outputs either major version 1, or 2
-WGET_VER=$(wget --version | head -n 1 | cut -d ' ' -f 3 | cut -d '.' -f 1)
+WGET_ARGS=("--quiet")
+# Extract wget major version and use supported progress flag accordingly.
+if [[ ! $* =~ "--noprogress" ]]; then
+    WGET_VER=$(wget --version | head -n 1 | cut -d ' ' -f 3 | cut -d '.' -f 1)
 
-if [[ "$WGET_VER" -ge 2 ]]; then
-    WGET_ARGS=("--quiet" "--force-progress")
-else
-    WGET_ARGS=("--quiet" "--show-progress")
-fi
-
-if [[ $* =~ "--noprogress" ]]; then
-    WGET_ARGS=("--quiet")
+    if [[ $WGET_VER -ge 2 ]]; then
+        WGET_ARGS+=("--force-progress")
+    else
+        WGET_ARGS+=("--show-progress")
+    fi
 fi
 
 for arg in "$@"; do
