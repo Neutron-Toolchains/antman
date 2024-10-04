@@ -249,6 +249,22 @@ upgrade_build() {
     elif can_update "${l_tag}" "${r_tag}"; then
         printlog "New update found!"
         echo "New tag: ${r_tag}"
+        if [[ ${NOCONFIRM} -eq 0 ]]; then
+            while true; do
+                read -rp "Do you want to upgrade the toolchain? [Y/N] " yn
+                case ${yn} in
+                    [Yy]*)
+                        break
+                        ;;
+                    [Nn]*)
+                        exit 0
+                        ;;
+                    *)
+                        echo "Invalid input, use Y or N to answer."
+                        ;;
+                esac
+            done
+        fi
         printlog "Removing old toolchain files using $0 --delete"
         delete
         printlog "Downloading new toolchain build using $0 --sync=${r_tag}"
