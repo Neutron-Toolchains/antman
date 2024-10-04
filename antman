@@ -34,10 +34,6 @@ Arguments :
 
  -S=<tag>       : Alias for --sync=<tag>
 
- --checkupdate  : Run a dry check to see if any toolchain update is available on Neutron-Clang repos.
-
- -C             : Alias for --checkupdate
-
  --update=<tag> : Download updated toolchain build from Neutron-Clang repos and upgrade.
                   By default AntMan will upgrade to latest build,
                   To upgrade to a specific build pass appropriate build tag in <tag>.
@@ -207,26 +203,6 @@ sync_tar() {
     rm -rf "neutron-clang-${r_tag}.tar.zst"
 }
 
-# A function to check for updates
-update_check() {
-    printlog "Checking for system requirements..."
-    pkg_check "wget"
-    printlog "Checking for updates..."
-    l_tag=$(grep -A1 tag build.info | tail -n1)
-    r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
-    if [[ ${l_tag} == "${r_tag}" ]]; then
-        echo "Already up-to-date!"
-        exit 0
-    elif can_update "${l_tag}" "${r_tag}"; then
-        printlog "New update found!"
-        echo "Update tag: ${r_tag}"
-        echo -e "\nRun $0 -Uy to upgrade"
-    else
-        printlog "Error: The requested tag (${r_tag}) is older than the installed toolchain build (${l_tag})"
-        exit 1
-    fi
-}
-
 # A function to delete toolchain files
 delete() {
     c_dir=$(pwd)
@@ -273,9 +249,9 @@ upgrade_build() {
     elif can_update "${l_tag}" "${r_tag}"; then
         printlog "New update found!"
         echo "New tag: ${r_tag}"
-        printlog "Removing old toolchain files using $0 -D"
+        printlog "Removing old toolchain files using $0 --delete"
         delete
-        printlog "Downloading new toolchain build using $0 -S=${r_tag}"
+        printlog "Downloading new toolchain build using $0 --sync=${r_tag}"
         sync_tar "${r_tag}"
         echo -e "\nToolchain upgraded to ${r_tag} build!"
     else
@@ -443,10 +419,6 @@ for arg in "$@"; do
             axel_check
             sync_tar "${tag}"
             echo -e "\nToolchain build ${r_tag} synced!"
-            exit 0
-            ;;
-        "--checkupdates" | "-C")
-            update_check
             exit 0
             ;;
         "-U"* | "--update"*)
