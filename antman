@@ -16,17 +16,21 @@ ANTMAN_VER="v2.4"
 
 # A function to showcase the options provided for args-based usage.
 helpmenu() {
+    SCRIPT_NAME="$0"
+    if [[ $LOCAL_SCRIPT -eq 0 ]]; then
+        SCRIPT_NAME="./antman"
+    fi
     echo -e "\e[1m
 *** A Nonsensical Toolchain Manager ${ANTMAN_VER}, by Dakkshesh07 ***\e[0m
 Usage :
-      $0 [args]
+      ${SCRIPT_NAME} [args]
 Arguments :
  --sync=<tag>   : Download and sync latest toolchain build from Neutron-Clang repos.
                   By default AntMan will sync latest build,
                   To sync to a specific build pass appropriate build tag in <tag>.
-                  Example: $0 --sync
-                  Example: $0 --sync=latest
-                  Exmaple: $0 --sync=42069420
+                  Example: ${SCRIPT_NAME} --sync
+                  Example: ${SCRIPT_NAME} --sync=latest
+                  Exmaple: ${SCRIPT_NAME} --sync=42069420
 
  -S=<tag>       : Alias for --sync=<tag>
 
@@ -37,9 +41,9 @@ Arguments :
  --update=<tag> : Download updated toolchain build from Neutron-Clang repos and upgrade.
                   By default AntMan will upgrade to latest build,
                   To upgrade to a specific build pass appropriate build tag in <tag>.
-                  Example: $0 --update
-                  Example: $0 --update=latest
-                  Exmaple: $0 --update=42069420
+                  Example: ${SCRIPT_NAME} --update
+                  Example: ${SCRIPT_NAME} --update=latest
+                  Exmaple: ${SCRIPT_NAME} --update=42069420
 
  -U=<tag>       : Alias for --update=<tag>
 
@@ -49,9 +53,9 @@ Arguments :
                     unbolt: Patch toolchain to use non BOLT optimized binaries.
                     bolt: Patch toolchain to use BOLT optimized binaries (default).
                     glibc: Patch toolchain to workaround glibc requirments.
-                  Example: $0 --patch=unbolt
-                  Example: $0 --patch=bolt
-                  Example: $0 --patch=glibc
+                  Example: ${SCRIPT_NAME} --patch=unbolt
+                  Example: ${SCRIPT_NAME} --patch=bolt
+                  Example: ${SCRIPT_NAME} --patch=glibc
 
  -P=[bolt|unbolt|glibc]
                 : Alias for --patch=[bolt|unbolt|glibc]
@@ -397,6 +401,11 @@ glibc_patcher() {
     rm -rf "${HOME}"/.neutron-tc/patchelf
     printlog "Done"
 }
+
+LOCAL_SCRIPT=1
+if [[ $0 =~ /dev/fd/[0-9]+ ]]; then
+    LOCAL_SCRIPT=0
+fi
 
 NOCONFIRM=0
 if [[ $* =~ "--noconfirm" ]]; then
