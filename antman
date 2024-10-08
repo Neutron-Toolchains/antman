@@ -23,8 +23,8 @@ helpmenu() {
     echo -e "\e[1m
 *** A Nonsensical Toolchain Manager ${ANTMAN_VER}, by Dakkshesh07 ***\e[0m
 Usage :
-      ${SCRIPT_NAME} [args]
-Arguments :
+      ${SCRIPT_NAME} [commands] [options]
+Commands :
  --sync=<tag>   : Download and sync latest toolchain build from Neutron-Clang repos.
                   By default AntMan will sync latest build,
                   To sync to a specific build pass appropriate build tag in <tag>.
@@ -72,17 +72,16 @@ Arguments :
 
  -I             : Alias for --info
 
+ --help         : Show this help menu.
+
+ --version      : Show AntMan version.
+
+Options :
  --noconfirm    : Do not ask for confirmation.
 
  --noprogress   : Do not show progress bar.
 
- --noaxel       : Do not use axel to download tars even if available.
-
- --help         : Show this help menu.
-
- -H             : Alias for --help.
-
- --version      : Show AntMan version."
+ --noaxel       : Do not use axel to download tars even if available."
 }
 
 # A function to print bold logs
@@ -554,7 +553,7 @@ for arg in "$@"; do
             echo "A Nonsensical Toolchain Manager ${ANTMAN_VER}, by Dakkshesh07"
             exit 0
             ;;
-        "-H" | "--help")
+        "--help")
             helpmenu
             exit 0
             ;;
