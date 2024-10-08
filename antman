@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Written by: dakkshesh07
-# AntMan v2.4 (A Nonsensical Toolchain Manager)
+# AntMan v3.0 (A Nonsensical Toolchain Manager)
 # Copyright (c) 2022 Dakkshesh <dakkshesh5@gmail.com>
 #
 #			GNU GENERAL PUBLIC LICENSE
@@ -12,34 +12,30 @@
 set -e
 shopt -s inherit_errexit
 
-ANTMAN_VER="v2.4"
+ANTMAN_VER="v3.0"
 
-# A function to showcase the options provided for args-based usage.
+# A function to showcase the commands & options provided for args-based usage.
 helpmenu() {
     echo -e "\e[1m
 *** A Nonsensical Toolchain Manager ${ANTMAN_VER}, by Dakkshesh07 ***\e[0m
 Usage :
-      $0 [args]
-Arguments :
+      ${SCRIPT_NAME} [commands] [options]
+Commands :
  --sync=<tag>   : Download and sync latest toolchain build from Neutron-Clang repos.
                   By default AntMan will sync latest build,
                   To sync to a specific build pass appropriate build tag in <tag>.
-                  Example: $0 --sync
-                  Example: $0 --sync=latest
-                  Exmaple: $0 --sync=42069420
+                  Example: ${SCRIPT_NAME} --sync
+                  Example: ${SCRIPT_NAME} --sync=latest
+                  Exmaple: ${SCRIPT_NAME} --sync=42069420
 
  -S=<tag>       : Alias for --sync=<tag>
-
- --checkupdate  : Run a dry check to see if any toolchain update is available on Neutron-Clang repos.
-
- -C             : Alias for --checkupdate
 
  --update=<tag> : Download updated toolchain build from Neutron-Clang repos and upgrade.
                   By default AntMan will upgrade to latest build,
                   To upgrade to a specific build pass appropriate build tag in <tag>.
-                  Example: $0 --update
-                  Example: $0 --update=latest
-                  Exmaple: $0 --update=42069420
+                  Example: ${SCRIPT_NAME} --update
+                  Example: ${SCRIPT_NAME} --update=latest
+                  Exmaple: ${SCRIPT_NAME} --update=42069420
 
  -U=<tag>       : Alias for --update=<tag>
 
@@ -49,12 +45,19 @@ Arguments :
                     unbolt: Patch toolchain to use non BOLT optimized binaries.
                     bolt: Patch toolchain to use BOLT optimized binaries (default).
                     glibc: Patch toolchain to workaround glibc requirments.
-                  Example: $0 --patch=unbolt
-                  Example: $0 --patch=bolt
-                  Example: $0 --patch=glibc
+                  Example: ${SCRIPT_NAME} --patch=unbolt
+                  Example: ${SCRIPT_NAME} --patch=bolt
+                  Example: ${SCRIPT_NAME} --patch=glibc
 
  -P=[bolt|unbolt|glibc]
                 : Alias for --patch=[bolt|unbolt|glibc]
+
+ --antman-update
+                : Check and install updates for the antman script from the repository.
+                  If you have installed antman via AUR, 
+                  please use your AUR package manager to update instead.
+
+ -A             : Alias for --antman-update.
 
  --delete       : Delete all clang related files.
                   AntMan script itself wont be deleted when this command is ran.
@@ -65,15 +68,16 @@ Arguments :
 
  -I             : Alias for --info
 
+ --help         : Show this help menu.
+
+ --version      : Show AntMan version.
+
+Options :
  --noconfirm    : Do not ask for confirmation.
 
  --noprogress   : Do not show progress bar.
 
- --help         : Show this help menu.
-
- -H             : Alias for --help.
-
- --version      : Show AntMan version."
+ --noaxel       : Do not use axel to download tars even if available."
 }
 
 # A function to print bold logs
@@ -82,9 +86,14 @@ printlog() {
 $1\e[0m"
 }
 
-# A function to check if package exists
+# A function to check if command exists
+cmd_check() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# A function to verify dependencies
 pkg_check() {
-    if [[ -n "$(command -v "$1")" ]]; then
+    if [[ -n $1 ]] && cmd_check "$1"; then
         echo "$1: yes"
     else
         echo "$1: no"
@@ -93,25 +102,79 @@ pkg_check() {
     fi
 }
 
-# A function for converting dated build tags to unix timestamps
-tag_to_unix_ts() {
-    local dt yr mt dy
-    dt="$1"
-    yr=${dt:4:4}
-    mt=${dt:2:2}
-    dy=${dt::2}
-    date -d "${yr}-${mt}-${dy}" +%s
+# A function to check axel availability and set the default download utility
+DL_UTILITY="wget"
+axel_check() {
+    if [[ ${NOAXEL} -eq 0 ]] && cmd_check "axel"; then
+        printlog "axel was found on the system and will be used to download the tars quickly..."
+        echo "if you wish to disable this use the --noaxel flag."
+        DL_UTILITY="axel"
+    fi
 }
 
-# A function to compare timestamps
-can_update() {
-    local tag_a tag_b
-    tag_a=$(tag_to_unix_ts "$1")
-    tag_b=$(tag_to_unix_ts "$2")
-    if [[ ${tag_a} -lt ${tag_b} ]]; then
-        true
-    elif [[ ${tag_b} -lt ${tag_a} ]]; then
-        false
+# A function to check availablility of updates for antman
+antman_update_check() {
+    printlog "Checking for system requirements..."
+    pkg_check "wget"
+
+    if [[ $LOCAL_SCRIPT -eq 0 ]]; then
+        return 1
+    fi
+
+    # Function to get latest version tag
+    get_latest_version() {
+        wget -qO- "https://api.github.com/repos/Neutron-Toolchains/antman/tags" | grep -Po '"name": "\K.*?(?=")' | head -n 1
+    }
+
+    # Get the latest GitHub version
+    latest_version=$(get_latest_version)
+
+    if [ -z "$latest_version" ]; then
+        echo "Failed to fetch version information from GitHub."
+        return 1
+    fi
+
+    # Compare current version with the latest version
+    if [ "$ANTMAN_VER" != "$latest_version" ]; then
+        echo "A new version of antman (${ANTMAN_VER} -> ${latest_version}) is available."
+        return 0 # Update available
+    else
+        echo "You are already using the latest version of antman (${ANTMAN_VER})."
+        return 1 # No update available
+    fi
+}
+
+# A function to update antman script
+antman_update() {
+
+    # Function to check if installed via AUR
+    is_antman_via_aur() {
+        pacman -Qi "antman" &>/dev/null
+    }
+
+    # Check if installed via AUR
+    if is_antman_via_aur; then
+        printlog "It looks like antman was installed via AUR."
+        echo "Please update it using your AUR helper (e.g., paru, yay):"
+        echo "    paru -Syu antman"
+        exit 1 # No update via this script if installed via AUR
+    fi
+
+    printlog "Checking for updates..."
+
+    if antman_update_check; then
+        echo "Fetching the latest antman..."
+        ANTMAN_PATH="$(pwd)/${SCRIPT_NAME}"
+        wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman" -O "${ANTMAN_PATH}" || {
+            echo "Failed to fetch latest antman. Please try again."
+            exit 1
+        }
+
+        # If wget succeeds, proceed to change permissions and display success message
+        chmod +x "$ANTMAN_PATH"
+        echo "antman was updated successfully!"
+    else
+        echo "No updates are available..."
     fi
 }
 
@@ -122,6 +185,7 @@ sync_tar() {
     pkg_check "tar"
     pkg_check "wget"
     pkg_check "sha256sum"
+    axel_check
 
     printlog "Fetching build info..."
     echo "Requested Tag: $1"
@@ -159,11 +223,15 @@ sync_tar() {
 
     if [[ ${host_glibc//./} -lt ${t_glibc//./} ]]; then
         printlog "Warning: host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version (${t_glibc})"
-        printlog "Workaround this by patching toolchain using '$0 --patch=glibc'"
+        printlog "Workaround this by patching toolchain using '${SCRIPT_NAME} --patch=glibc'"
     fi
 
     printlog "Fetching build tar..."
-    wget "${WGET_ARGS[@]}" "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/${r_tag}/neutron-clang-${r_tag}.tar.zst"
+    if [[ $DL_UTILITY == "axel" ]]; then
+        axel "${AXEL_ARGS[@]}" "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/${r_tag}/neutron-clang-${r_tag}.tar.zst"
+    else
+        wget "${WGET_ARGS[@]}" "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/${r_tag}/neutron-clang-${r_tag}.tar.zst"
+    fi
 
     printlog "Checking file integrity of the tar..."
     if ! echo "${t_shasum} neutron-clang-${r_tag}.tar.zst" | sha256sum -c -; then
@@ -181,38 +249,24 @@ sync_tar() {
     rm -rf "neutron-clang-${r_tag}.tar.zst"
 }
 
-# A function to check for updates
-update_check() {
-    printlog "Checking for system requirements..."
-    pkg_check "wget"
-    printlog "Checking for updates..."
-    l_tag=$(grep -A1 tag build.info | tail -n1)
-    r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
-    if [[ ${l_tag} == "${r_tag}" ]]; then
-        echo "Already up-to-date!"
-        exit 0
-    elif can_update "${l_tag}" "${r_tag}"; then
-        printlog "New update found!"
-        echo "Update tag: ${r_tag}"
-        echo -e "\nRun $0 -Uy to upgrade"
-    else
-        printlog "Error: The requested tag (${r_tag}) is older than the installed toolchain build (${l_tag})"
-        exit 1
-    fi
-}
-
 # A function to delete toolchain files
 delete() {
     c_dir=$(pwd)
     printlog "Cleaning toolchain files..."
-    echo "Everything in ${c_dir}/ except this script itself would be deleted!"
+    echo "Everything in ${c_dir}/ will be deleted!"
+
+    # Message about excluding the script itself if LOCAL_SCRIPT is 1
+    if [[ ${LOCAL_SCRIPT} -eq 1 ]]; then
+        echo "Except this script itself: ${SCRIPT_NAME}"
+    fi
+
+    # Confirm deletion
     if [[ ${NOCONFIRM} -eq 0 ]]; then
         while true; do
             read -rp "Proceed? [Y/N] " yn
             case ${yn} in
                 [Yy]*)
                     printlog "Cleaning..."
-                    find . ! -name "$(basename "$0")" -delete
                     break
                     ;;
                 [Nn]*) exit 0 ;;
@@ -221,7 +275,13 @@ delete() {
         done
     else
         printlog "Cleaning..."
-        find . ! -name "$(basename "$0")" -delete
+    fi
+
+    # Perform the deletion
+    if [[ ${LOCAL_SCRIPT} -eq 1 ]]; then
+        find . ! -name "${SCRIPT_NAME}" -delete
+    else
+        find . -delete
     fi
 }
 
@@ -229,6 +289,28 @@ delete() {
 upgrade_build() {
     printlog "Checking for system requirements..."
     pkg_check "wget"
+
+    # A function to compare timestamps
+    compare_tags() {
+        # A function for converting dated build tags to unix timestamps
+        tag_to_unix_ts() {
+            local dt yr mt dy
+            dt="$1"
+            yr=${dt:4:4}
+            mt=${dt:2:2}
+            dy=${dt::2}
+            date -d "${yr}-${mt}-${dy}" +%s
+        }
+
+        local tag_a tag_b
+        tag_a=$(tag_to_unix_ts "$1")
+        tag_b=$(tag_to_unix_ts "$2")
+        if [[ ${tag_a} -lt ${tag_b} ]]; then
+            true
+        elif [[ ${tag_b} -lt ${tag_a} ]]; then
+            false
+        fi
+    }
 
     printlog "Checking for updates..."
     l_tag=$(grep -A1 tag build.info | tail -n1)
@@ -244,12 +326,28 @@ upgrade_build() {
     if [[ ${l_tag} == "${r_tag}" ]]; then
         printlog "Nothing to do, Already up-to-date"
         exit 0
-    elif can_update "${l_tag}" "${r_tag}"; then
+    elif compare_tags "${l_tag}" "${r_tag}"; then
         printlog "New update found!"
         echo "New tag: ${r_tag}"
-        printlog "Removing old toolchain files using $0 -D"
+        if [[ ${NOCONFIRM} -eq 0 ]]; then
+            while true; do
+                read -rp "Do you want to upgrade the toolchain? [Y/N] " yn
+                case ${yn} in
+                    [Yy]*)
+                        break
+                        ;;
+                    [Nn]*)
+                        exit 0
+                        ;;
+                    *)
+                        echo "Invalid input, use Y or N to answer."
+                        ;;
+                esac
+            done
+        fi
+        printlog "Removing old toolchain files using ${SCRIPT_NAME} --delete"
         delete
-        printlog "Downloading new toolchain build using $0 -S=${r_tag}"
+        printlog "Downloading new toolchain build using ${SCRIPT_NAME} --sync=${r_tag}"
         sync_tar "${r_tag}"
         echo -e "\nToolchain upgraded to ${r_tag} build!"
     else
@@ -330,21 +428,31 @@ glibc_patcher() {
     pkg_check "wget"
     pkg_check "bsdtar"
     WORK_DIR=$1
+    axel_check
+    fetch_and_uncompress() {
+        rm -rf /tmp/tmp_antman.tar
+        if [[ $DL_UTILITY == "axel" ]]; then
+            axel -q -O"/tmp/tmp_antman.tar" "${1}"
+        else
+            wget -q -O"/tmp/tmp_antman.tar" "${1}"
+        fi
+        bsdtar -C "${HOME}"/.neutron-tc/"${2}" -xf /tmp/tmp_antman.tar
+        rm -rf /tmp/tmp_antman.tar
+    }
+
     printlog "Downloading patchelf binary from NixOS repos..."
+    PATCHELF_VER="0.18.0"
     mkdir -p "${HOME}"/.neutron-tc/patchelf-temp
-    wget -qO- https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz | bsdtar -C "${HOME}"/.neutron-tc/patchelf-temp -xf -
+    fetch_and_uncompress "https://github.com/NixOS/patchelf/releases/download/${PATCHELF_VER}/patchelf-${PATCHELF_VER}-x86_64.tar.gz" patchelf-temp
     mv "${HOME}"/.neutron-tc/patchelf-temp/bin/patchelf "${HOME}"/.neutron-tc/
     rm -rf "${HOME}"/.neutron-tc/patchelf-temp
 
     printlog "Downloading latest libs from ArchLinux repos..."
     mkdir "${HOME}"/.neutron-tc/glibc &>/dev/null || (rm -rf "${HOME}"/.neutron-tc/glibc && mkdir "${HOME}"/.neutron-tc/glibc)
-
-    wget -qO- https://archlinux.org/packages/core/x86_64/glibc/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
-    wget -qO- https://archlinux.org/packages/core/x86_64/lib32-glibc/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
-
-    wget -qO- https://archlinux.org/packages/core/x86_64/gcc-libs/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
-    wget -qO- https://archlinux.org/packages/core/x86_64/lib32-gcc-libs/download | bsdtar -C "${HOME}"/.neutron-tc/glibc -xf -
-
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/glibc/download glibc
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/lib32-glibc/download glibc
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/gcc-libs/download glibc
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/lib32-gcc-libs/download glibc
     ln -svf "${HOME}"/.neutron-tc/glibc/usr/lib "${HOME}"/.neutron-tc/glibc/usr/lib64
 
     printlog "Patching libs..."
@@ -366,14 +474,45 @@ glibc_patcher() {
     printlog "Done"
 }
 
+LOCAL_SCRIPT=1
+if [[ $0 =~ /dev/fd/[0-9]+ ]]; then
+    LOCAL_SCRIPT=0
+fi
+
+SCRIPT_NAME="$(basename "$0")"
+if [[ $LOCAL_SCRIPT -eq 0 ]]; then
+    SCRIPT_NAME="./antman"
+fi
+
 NOCONFIRM=0
 if [[ $* =~ "--noconfirm" ]]; then
     NOCONFIRM=1
 fi
 
-WGET_ARGS=("--quiet" "--show-progress")
-if [[ $* =~ "--noprogress" ]]; then
-    WGET_ARGS=("--quiet")
+NOAXEL=0
+if [[ $* =~ "--noaxel" ]]; then
+    NOAXEL=1
+fi
+
+WGET_ARGS=("--quiet")
+AXEL_ARGS=()
+# Extract wget major version and use supported progress flag accordingly.
+# Also set axel args according to flags passed by user.
+if [[ ! $* =~ "--noprogress" ]]; then
+    WGET_VER=$(wget --version | head -n 1 | cut -d ' ' -f 3 | cut -d '.' -f 1)
+
+    if [[ $WGET_VER -ge 2 ]]; then
+        WGET_ARGS+=("--force-progress")
+    else
+        WGET_ARGS+=("--show-progress")
+    fi
+else
+    AXEL_ARGS=("--quiet")
+fi
+
+if [[ $# -ne 0 ]] && antman_update_check &>/dev/null; then
+    printlog "An update is available for the antman..."
+    echo "Consider upgrading by ${SCRIPT_NAME} --antman-update"
 fi
 
 for arg in "$@"; do
@@ -383,12 +522,9 @@ for arg in "$@"; do
             if [[ ${tag} == "-S" ]] || [[ ${tag} == "--sync" ]]; then
                 tag="latest"
             fi
+            axel_check
             sync_tar "${tag}"
             echo -e "\nToolchain build ${r_tag} synced!"
-            exit 0
-            ;;
-        "--checkupdates" | "-C")
-            update_check
             exit 0
             ;;
         "-U"* | "--update"*)
@@ -414,6 +550,10 @@ for arg in "$@"; do
             fi
             exit 0
             ;;
+        "-A" | "--antman-update")
+            antman_update
+            exit 0
+            ;;
         "-D" | "--delete")
             delete
             exit 0
@@ -426,12 +566,12 @@ for arg in "$@"; do
             echo "A Nonsensical Toolchain Manager ${ANTMAN_VER}, by Dakkshesh07"
             exit 0
             ;;
-        "-H" | "--help")
+        "--help")
             helpmenu
             exit 0
             ;;
         *)
-            echo "Invalid argument passed: '${arg}' Run '$0 --help' to view available options."
+            echo "Invalid argument passed: '${arg}' Run '${SCRIPT_NAME} --help' to view available options."
             exit 1
             ;;
     esac
