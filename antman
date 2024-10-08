@@ -56,6 +56,13 @@ Arguments :
  -P=[bolt|unbolt|glibc]
                 : Alias for --patch=[bolt|unbolt|glibc]
 
+ --antman-update
+                : Check and install updates for the antman script from the repository.
+                  If you have installed antman via AUR, 
+                  please use your AUR package manager to update instead.
+
+ -A             : Alias for --antman-update.
+
  --delete       : Delete all clang related files.
                   AntMan script itself wont be deleted when this command is ran.
 
@@ -121,7 +128,7 @@ tag_to_unix_ts() {
 }
 
 # A function to compare timestamps
-can_update() {
+compare_tags() {
     local tag_a tag_b
     tag_a=$(tag_to_unix_ts "$1")
     tag_b=$(tag_to_unix_ts "$2")
@@ -129,6 +136,72 @@ can_update() {
         true
     elif [[ ${tag_b} -lt ${tag_a} ]]; then
         false
+    fi
+}
+
+# A function to check availablility of updates for antman
+antman_update_check() {
+    printlog "Checking for system requirements..."
+    pkg_check "wget"
+
+    if [[ $LOCAL_SCRIPT -eq 0 ]]; then
+        return 1
+    fi
+
+    # Function to get latest version tag
+    get_latest_version() {
+        wget -qO- "https://api.github.com/repos/Neutron-Toolchains/antman/tags" | grep -Po '"name": "\K.*?(?=")' | head -n 1
+    }
+
+    # Get the latest GitHub version
+    latest_version=$(get_latest_version)
+
+    if [ -z "$latest_version" ]; then
+        echo "Failed to fetch version information from GitHub."
+        return 1
+    fi
+
+    # Compare current version with the latest version
+    if [ "$ANTMAN_VER" != "$latest_version" ]; then
+        echo "A new version of antman (${ANTMAN_VER} -> ${latest_version}) is available."
+        return 0 # Update available
+    else
+        echo "You are already using the latest version of antman (${ANTMAN_VER})."
+        return 1 # No update available
+    fi
+}
+
+# A function to update antman script
+antman_update() {
+
+    # Function to check if installed via AUR
+    is_antman_via_aur() {
+        pacman -Qi "antman" &>/dev/null
+    }
+
+    # Check if installed via AUR
+    if is_antman_via_aur; then
+        printlog "It looks like antman was installed via AUR."
+        echo "Please update it using your AUR helper (e.g., paru, yay):"
+        echo "    paru -Syu antman"
+        exit 1 # No update via this script if installed via AUR
+    fi
+
+    printlog "Checking for updates..."
+
+    if antman_update_check; then
+        echo "Fetching the latest antman..."
+        ANTMAN_PATH="$(pwd)/$(basename "$0")"
+        wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman" -O "${ANTMAN_PATH}" || {
+            echo "Failed to fetch latest antman. Please try again."
+            exit 1
+        }
+
+        # If wget succeeds, proceed to change permissions and display success message
+        chmod +x "$ANTMAN_PATH"
+        echo "antman was updated successfully!"
+    else
+        echo "No updates are available..."
     fi
 }
 
@@ -246,7 +319,7 @@ upgrade_build() {
     if [[ ${l_tag} == "${r_tag}" ]]; then
         printlog "Nothing to do, Already up-to-date"
         exit 0
-    elif can_update "${l_tag}" "${r_tag}"; then
+    elif compare_tags "${l_tag}" "${r_tag}"; then
         printlog "New update found!"
         echo "New tag: ${r_tag}"
         if [[ ${NOCONFIRM} -eq 0 ]]; then
@@ -425,6 +498,11 @@ else
     AXEL_ARGS=("--quiet")
 fi
 
+if [[ $# -ne 0 ]] && antman_update_check &>/dev/null; then
+    printlog "An update is available for the antman..."
+    echo "Consider upgrading by $0 --antman-update"
+fi
+
 for arg in "$@"; do
     case "${arg}" in
         "-S"* | "--sync"*)
@@ -458,6 +536,10 @@ for arg in "$@"; do
                 echo -e "\e[1mError: Invalid argument '$1'\e[0m"
                 exit 1
             fi
+            exit 0
+            ;;
+        "-A" | "--antman-update")
+            antman_update
             exit 0
             ;;
         "-D" | "--delete")
