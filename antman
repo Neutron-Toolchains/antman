@@ -14,7 +14,7 @@ shopt -s inherit_errexit
 
 ANTMAN_VER="v2.4"
 
-# A function to showcase the options provided for args-based usage.
+# A function to showcase the commands & options provided for args-based usage.
 helpmenu() {
     SCRIPT_NAME="$0"
     if [[ $LOCAL_SCRIPT -eq 0 ]]; then
@@ -113,28 +113,6 @@ axel_check() {
         printlog "axel was found on the system and will be used to download the tars quickly..."
         echo "if you wish to disable this use the --noaxel flag."
         DL_UTILITY="axel"
-    fi
-}
-
-# A function for converting dated build tags to unix timestamps
-tag_to_unix_ts() {
-    local dt yr mt dy
-    dt="$1"
-    yr=${dt:4:4}
-    mt=${dt:2:2}
-    dy=${dt::2}
-    date -d "${yr}-${mt}-${dy}" +%s
-}
-
-# A function to compare timestamps
-compare_tags() {
-    local tag_a tag_b
-    tag_a=$(tag_to_unix_ts "$1")
-    tag_b=$(tag_to_unix_ts "$2")
-    if [[ ${tag_a} -lt ${tag_b} ]]; then
-        true
-    elif [[ ${tag_b} -lt ${tag_a} ]]; then
-        false
     fi
 }
 
@@ -303,6 +281,28 @@ delete() {
 upgrade_build() {
     printlog "Checking for system requirements..."
     pkg_check "wget"
+
+    # A function to compare timestamps
+    compare_tags() {
+        # A function for converting dated build tags to unix timestamps
+        tag_to_unix_ts() {
+            local dt yr mt dy
+            dt="$1"
+            yr=${dt:4:4}
+            mt=${dt:2:2}
+            dy=${dt::2}
+            date -d "${yr}-${mt}-${dy}" +%s
+        }
+
+        local tag_a tag_b
+        tag_a=$(tag_to_unix_ts "$1")
+        tag_b=$(tag_to_unix_ts "$2")
+        if [[ ${tag_a} -lt ${tag_b} ]]; then
+            true
+        elif [[ ${tag_b} -lt ${tag_a} ]]; then
+            false
+        fi
+    }
 
     printlog "Checking for updates..."
     l_tag=$(grep -A1 tag build.info | tail -n1)
