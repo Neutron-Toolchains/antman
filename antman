@@ -16,10 +16,6 @@ ANTMAN_VER="v2.4"
 
 # A function to showcase the commands & options provided for args-based usage.
 helpmenu() {
-    SCRIPT_NAME="$0"
-    if [[ $LOCAL_SCRIPT -eq 0 ]]; then
-        SCRIPT_NAME="./antman"
-    fi
     echo -e "\e[1m
 *** A Nonsensical Toolchain Manager ${ANTMAN_VER}, by Dakkshesh07 ***\e[0m
 Usage :
@@ -168,7 +164,7 @@ antman_update() {
 
     if antman_update_check; then
         echo "Fetching the latest antman..."
-        ANTMAN_PATH="$(pwd)/$(basename "$0")"
+        ANTMAN_PATH="$(pwd)/${SCRIPT_NAME}"
         wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman" -O "${ANTMAN_PATH}" || {
             echo "Failed to fetch latest antman. Please try again."
             exit 1
@@ -227,7 +223,7 @@ sync_tar() {
 
     if [[ ${host_glibc//./} -lt ${t_glibc//./} ]]; then
         printlog "Warning: host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version (${t_glibc})"
-        printlog "Workaround this by patching toolchain using '$0 --patch=glibc'"
+        printlog "Workaround this by patching toolchain using '${SCRIPT_NAME} --patch=glibc'"
     fi
 
     printlog "Fetching build tar..."
@@ -257,14 +253,20 @@ sync_tar() {
 delete() {
     c_dir=$(pwd)
     printlog "Cleaning toolchain files..."
-    echo "Everything in ${c_dir}/ except this script itself would be deleted!"
+    echo "Everything in ${c_dir}/ will be deleted!"
+
+    # Message about excluding the script itself if LOCAL_SCRIPT is 1
+    if [[ ${LOCAL_SCRIPT} -eq 1 ]]; then
+        echo "Except this script itself: ${SCRIPT_NAME}"
+    fi
+
+    # Confirm deletion
     if [[ ${NOCONFIRM} -eq 0 ]]; then
         while true; do
             read -rp "Proceed? [Y/N] " yn
             case ${yn} in
                 [Yy]*)
                     printlog "Cleaning..."
-                    find . ! -name "$(basename "$0")" -delete
                     break
                     ;;
                 [Nn]*) exit 0 ;;
@@ -273,7 +275,13 @@ delete() {
         done
     else
         printlog "Cleaning..."
-        find . ! -name "$(basename "$0")" -delete
+    fi
+
+    # Perform the deletion
+    if [[ ${LOCAL_SCRIPT} -eq 1 ]]; then
+        find . ! -name "${SCRIPT_NAME}" -delete
+    else
+        find . -delete
     fi
 }
 
@@ -337,9 +345,9 @@ upgrade_build() {
                 esac
             done
         fi
-        printlog "Removing old toolchain files using $0 --delete"
+        printlog "Removing old toolchain files using ${SCRIPT_NAME} --delete"
         delete
-        printlog "Downloading new toolchain build using $0 --sync=${r_tag}"
+        printlog "Downloading new toolchain build using ${SCRIPT_NAME} --sync=${r_tag}"
         sync_tar "${r_tag}"
         echo -e "\nToolchain upgraded to ${r_tag} build!"
     else
@@ -471,6 +479,11 @@ if [[ $0 =~ /dev/fd/[0-9]+ ]]; then
     LOCAL_SCRIPT=0
 fi
 
+SCRIPT_NAME="$(basename "$0")"
+if [[ $LOCAL_SCRIPT -eq 0 ]]; then
+    SCRIPT_NAME="./antman"
+fi
+
 NOCONFIRM=0
 if [[ $* =~ "--noconfirm" ]]; then
     NOCONFIRM=1
@@ -499,7 +512,7 @@ fi
 
 if [[ $# -ne 0 ]] && antman_update_check &>/dev/null; then
     printlog "An update is available for the antman..."
-    echo "Consider upgrading by $0 --antman-update"
+    echo "Consider upgrading by ${SCRIPT_NAME} --antman-update"
 fi
 
 for arg in "$@"; do
@@ -558,7 +571,7 @@ for arg in "$@"; do
             exit 0
             ;;
         *)
-            echo "Invalid argument passed: '${arg}' Run '$0 --help' to view available options."
+            echo "Invalid argument passed: '${arg}' Run '${SCRIPT_NAME} --help' to view available options."
             exit 1
             ;;
     esac
