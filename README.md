@@ -22,7 +22,6 @@ bash <(curl -s "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main
 Some basic AntMan commands:
 - To sync latest toolchain build. `./antman -S` or `./antman -S=latest`
 - To sync a specific toolchain release. `./antman -S=<release tag>`
-- To check for updates. `./antman -C`
 - To check for updates and sync update. `./antman -U`
 - To sync a specific update. `./antman -U=<release tag>`
 - To delete synced build. `./antman -D`
