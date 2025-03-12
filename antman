@@ -215,7 +215,7 @@ sync_tar() {
     echo "Build Date: ${b_date}"
     echo "Clang Version: ${clang_ver}"
     echo "LLVM commit at: ${llvm_c}"
-    if [[ -n "${binutils_ver}" ]]; then
+    if [[ -n ${binutils_ver} ]]; then
         echo "Binutils Version: ${binutils_ver}"
         echo "Binutils commit at: ${binutils_c}"
     fi
@@ -433,48 +433,59 @@ glibc_patcher() {
     pkg_check "bsdtar"
     WORK_DIR=$1
     axel_check
+
     fetch_and_uncompress() {
-        rm -rf /tmp/tmp_antman.tar
+        local url=$1
+        local dest_dir=$2
+        local tmp_file
+        tmp_file="$(mktemp)"
+
+        rm -f "${tmp_file}"
+
         if [[ $DL_UTILITY == "axel" ]]; then
-            axel -q -O"/tmp/tmp_antman.tar" "${1}"
+            axel -q -o "${tmp_file}" "${url}"
         else
-            wget -q -O"/tmp/tmp_antman.tar" "${1}"
+            wget -q -O "${tmp_file}" "${url}"
         fi
-        bsdtar -C "${HOME}"/.neutron-tc/"${2}" -xf /tmp/tmp_antman.tar
-        rm -rf /tmp/tmp_antman.tar
+
+        bsdtar -C "${dest_dir}" -xf "${tmp_file}"
+        rm -f "${tmp_file}"
     }
 
     printlog "Downloading patchelf binary from NixOS repos..."
     PATCHELF_VER="0.18.0"
-    mkdir -p "${HOME}"/.neutron-tc/patchelf-temp
-    fetch_and_uncompress "https://github.com/NixOS/patchelf/releases/download/${PATCHELF_VER}/patchelf-${PATCHELF_VER}-x86_64.tar.gz" patchelf-temp
-    mv "${HOME}"/.neutron-tc/patchelf-temp/bin/patchelf "${HOME}"/.neutron-tc/
-    rm -rf "${HOME}"/.neutron-tc/patchelf-temp
+    PATCHELF_DIR=$(mktemp -d)
+
+    fetch_and_uncompress "https://github.com/NixOS/patchelf/releases/download/${PATCHELF_VER}/patchelf-${PATCHELF_VER}-x86_64.tar.gz" "${PATCHELF_DIR}"
 
     printlog "Downloading latest libs from ArchLinux repos..."
-    mkdir "${HOME}"/.neutron-tc/glibc &>/dev/null || (rm -rf "${HOME}"/.neutron-tc/glibc && mkdir "${HOME}"/.neutron-tc/glibc)
-    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/glibc/download glibc
-    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/lib32-glibc/download glibc
-    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/gcc-libs/download glibc
-    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/lib32-gcc-libs/download glibc
-    ln -svf "${HOME}"/.neutron-tc/glibc/usr/lib "${HOME}"/.neutron-tc/glibc/usr/lib64
+    GLIBC_DIR="${HOME}/.neutron-tc/glibc"
+    rm -rf "${GLIBC_DIR}" && mkdir -p "${GLIBC_DIR}"
+
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/glibc/download "${GLIBC_DIR}"
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/lib32-glibc/download "${GLIBC_DIR}"
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/gcc-libs/download "${GLIBC_DIR}"
+    fetch_and_uncompress https://archlinux.org/packages/core/x86_64/lib32-gcc-libs/download "${GLIBC_DIR}"
+    ln -svf "${GLIBC_DIR}/usr/lib" "${GLIBC_DIR}/usr/lib64"
+
+    patch_binaries() {
+        local dir=$1
+
+        find "$dir" -type f -exec file {} \; | grep 'ELF .* interpreter' | awk '{print $1}' | sed 's/.$//' | while read -r bin; do
+            echo "Patching: $bin"
+            "${PATCHELF_DIR}"/bin/patchelf --set-rpath "${GLIBC_DIR}/usr/lib" --force-rpath --set-interpreter "${GLIBC_DIR}/usr/lib/ld-linux-x86-64.so.2" "$bin"
+        done
+    }
 
     printlog "Patching libs..."
-    for bin in $(find "${HOME}"/.neutron-tc/glibc -type f -exec file {} \; | grep 'ELF .* interpreter' | awk '{print $1}'); do
-        bin="${bin::-1}"
-        echo "Patching: ${bin}"
-        "${HOME}"/.neutron-tc/patchelf --set-rpath "${HOME}"/.neutron-tc/glibc/usr/lib --force-rpath --set-interpreter "${HOME}"/.neutron-tc/glibc/usr/lib/ld-linux-x86-64.so.2 "${bin}"
-    done
+    patch_binaries "${GLIBC_DIR}"
 
     printlog "Patching Toolchain..."
-    for bin in $(find "${WORK_DIR}" -type f -exec file {} \; | grep 'ELF .* interpreter' | awk '{print $1}'); do
-        bin="${bin::-1}"
-        echo "Patching: ${bin}"
-        "${HOME}"/.neutron-tc/patchelf --add-rpath "${HOME}"/.neutron-tc/glibc/usr/lib --force-rpath --set-interpreter "${HOME}"/.neutron-tc/glibc/usr/lib/ld-linux-x86-64.so.2 "${bin}"
-    done
+    patch_binaries "${WORK_DIR}"
 
     printlog "Cleaning..."
-    rm -rf "${HOME}"/.neutron-tc/patchelf
+    rm -rf "${PATCHELF_DIR}"
+
     printlog "Done"
 }
 
