@@ -524,7 +524,6 @@ for arg in "$@"; do
             if [[ ${tag} == "-S" ]] || [[ ${tag} == "--sync" ]]; then
                 tag="latest"
             fi
-            axel_check
             sync_tar "${tag}"
             echo -e "\nToolchain build ${r_tag} synced!"
             exit 0
