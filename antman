@@ -201,14 +201,16 @@ sync_tar() {
         r_tag=$1
     fi
 
-    clang_ver=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 clang-ver | tail -n1)
-    b_date=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 date | tail -n1)
-    llvm_c=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 llvm-commit | tail -n1)
-    binutils_ver=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 binutils-ver | tail -n1)
-    binutils_c=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 binutils-commit | tail -n1)
-    t_glibc=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 host-glibc | tail -n1)
-    t_size=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 size | tail -n1)
-    t_shasum=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt" | grep -A1 shasum | tail -n1)
+    build_info=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt")
+
+    clang_ver=$(echo "${build_info}" | grep -A1 clang-ver | tail -n1)
+    b_date=$(echo "${build_info}" | grep -A1 date | tail -n1)
+    llvm_c=$(echo "${build_info}" | grep -A1 llvm-commit | tail -n1)
+    binutils_ver=$(echo "${build_info}" | grep -A1 binutils-ver | tail -n1)
+    binutils_c=$(echo "${build_info}" | grep -A1 binutils-commit | tail -n1)
+    t_glibc=$(echo "${build_info}" | grep -A1 host-glibc | tail -n1)
+    t_size=$(echo "${build_info}" | grep -A1 size | tail -n1)
+    t_shasum=$(echo "${build_info}" | grep -A1 shasum | tail -n1)
 
     echo "Build Date: ${b_date}"
     echo "Clang Version: ${clang_ver}"
@@ -242,7 +244,7 @@ sync_tar() {
     printlog "Extracting tar..."
     tar -I zstd -xf "neutron-clang-${r_tag}.tar.zst"
 
-    wget --quiet -O build.info "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt"
+    echo "${build_info}" >"build.info"
     echo -e "\n[tag]\n${r_tag}" >>"build.info"
 
     printlog "Cleaning up..."
