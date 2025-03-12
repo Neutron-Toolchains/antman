@@ -215,8 +215,10 @@ sync_tar() {
     echo "Build Date: ${b_date}"
     echo "Clang Version: ${clang_ver}"
     echo "LLVM commit at: ${llvm_c}"
-    echo "Binutils Version: ${binutils_ver}"
-    echo "Binutils commit at: ${binutils_c}"
+    if [[ -n "${binutils_ver}" ]]; then
+        echo "Binutils Version: ${binutils_ver}"
+        echo "Binutils commit at: ${binutils_c}"
+    fi
     echo "Glibc requirement: ${t_glibc}"
     echo "Build size: ${t_size}"
     echo "Build sha256sum: ${t_shasum}"
