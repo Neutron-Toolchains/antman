@@ -14,10 +14,40 @@ shopt -s inherit_errexit
 
 ANTMAN_VER="v3.0"
 
+# ===== Main message functions ===== #
+msg_common() {
+    local MSG_BOLD="\e[1m"
+    local MSG_RESET="\e[0m"
+    local MSG_TYPE=$1
+    echo -e "${MSG_BOLD}${MSG_TYPE}: ${2}${MSG_RESET}"
+}
+
+# Print info message
+msg_info() {
+    msg_common "INFO" "$1"
+}
+
+# Print success message
+msg_success() {
+    msg_common "SUCCESS" "$1"
+}
+
+# Print warning message
+msg_warn() {
+    msg_common "WARNING" "$1"
+}
+
+# Print error message
+msg_error() {
+    msg_common "ERROR" "$1"
+    exit 1
+}
+
 # A function to showcase the commands & options provided for args-based usage.
 helpmenu() {
     echo -e "\e[1m
-*** A Nonsensical Toolchain Manager ${ANTMAN_VER}, by Dakkshesh ***\e[0m
+A Nonsensical Toolchain Manager ${ANTMAN_VER}, by Dakkshesh\e[0m
+
 Usage :
       ${SCRIPT_NAME} [commands] [options]
 Commands :
@@ -80,42 +110,32 @@ Options :
  --noaxel       : Do not use axel to download tars even if available."
 }
 
-# A function to print bold logs
-printlog() {
-    echo -e "\e[1m
-$1\e[0m"
-}
-
 # A function to check if command exists
-cmd_check() {
+cmd_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
 # A function to verify dependencies
-pkg_check() {
-    if [[ -n $1 ]] && cmd_check "$1"; then
-        echo "$1: yes"
+check_dependency() {
+    if [[ -n $1 ]] && cmd_exists "$1"; then
+        echo "Checking for $1: ✓"
     else
-        echo "$1: no"
-        printlog "Error: $1 not found!"
-        exit 1
+        msg_error "$1 is not installed, please install it and try again."
     fi
 }
 
 # A function to check axel availability and set the default download utility
 DL_UTILITY="wget"
 axel_check() {
-    if [[ ${NOAXEL} -eq 0 ]] && cmd_check "axel"; then
-        printlog "axel was found on the system and will be used to download the tars quickly..."
-        echo "if you wish to disable this use the --noaxel flag."
+    if [[ ${NOAXEL} -eq 0 ]] && cmd_exists "axel"; then
+        msg_info "Using axel for faster downloads (use --noaxel to disable)"
         DL_UTILITY="axel"
     fi
 }
 
 # A function to check availablility of updates for antman
 antman_update_check() {
-    printlog "Checking for system requirements..."
-    pkg_check "wget"
+    check_dependency "wget"
 
     if [[ $LOCAL_SCRIPT -eq 0 ]]; then
         return 1
@@ -127,19 +147,20 @@ antman_update_check() {
     }
 
     # Get the latest GitHub version
+    local latest_version
     latest_version=$(get_latest_version)
 
     if [ -z "$latest_version" ]; then
-        echo "Failed to fetch version information from GitHub."
+        msg_warn "Failed to fetch version information from GitHub."
         return 1
     fi
 
     # Compare current version with the latest version
     if [ "$ANTMAN_VER" != "$latest_version" ]; then
-        echo "A new version of antman (${ANTMAN_VER} -> ${latest_version}) is available."
+        msg_info "A new version of antman (${ANTMAN_VER} -> ${latest_version}) is available."
         return 0 # Update available
     else
-        echo "You are already using the latest version of antman (${ANTMAN_VER})."
+        msg_info "You are already using the latest version of antman (${ANTMAN_VER})."
         return 1 # No update available
     fi
 }
@@ -154,55 +175,52 @@ antman_update() {
 
     # Check if installed via AUR
     if is_antman_via_aur; then
-        printlog "It looks like antman was installed via AUR."
+        msg_warn "It looks like antman was installed via AUR."
         echo "Please update it using your AUR helper (e.g., paru, yay):"
         echo "    paru -Syu antman"
         exit 1 # No update via this script if installed via AUR
     fi
 
-    printlog "Checking for updates..."
-
     if antman_update_check; then
-        echo "Fetching the latest antman..."
+        msg_info "Fetching the latest antman..."
+        local ANTMAN_PATH
         ANTMAN_PATH="$(pwd)/${SCRIPT_NAME}"
         wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman" -O "${ANTMAN_PATH}" || {
-            echo "Failed to fetch latest antman. Please try again."
-            exit 1
+            msg_error "Failed to fetch latest antman. Please try again."
         }
 
         # If wget succeeds, proceed to change permissions and display success message
         chmod +x "$ANTMAN_PATH"
-        echo "antman was updated successfully!"
+        msg_success "antman was updated successfully!"
     else
-        echo "No updates are available..."
+        msg_info "No updates are available..."
     fi
 }
 
 # A function to fetch/download Neutron clang builds from remote repos
 sync_tar() {
-    printlog "Checking for system requirements..."
-    pkg_check "zstd"
-    pkg_check "tar"
-    pkg_check "wget"
-    pkg_check "sha256sum"
+    msg_info "Checking dependencies"
+    check_dependency "zstd"
+    check_dependency "tar"
+    check_dependency "wget"
+    check_dependency "sha256sum"
     axel_check
 
-    printlog "Fetching build info..."
-    echo "Requested Tag: $1"
+    msg_info "Fetching build info..."
+    local r_tag build_info
 
     if [[ $1 == "latest" ]]; then
         r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
-        echo "Latest Tag: ${r_tag}"
+        msg_info "Using latest Tag: ${r_tag}"
     else
         if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt" -O- >/dev/null; then
-            echo "Error: $1 is not a valid tag"
-            exit 1
+            msg_error "Invalid tag: $1"
         fi
-        r_tag=$1
     fi
 
     build_info=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt")
 
+    local clang_ver b_date llvm_c binutils_ver binutils_c t_glibc t_size t_shasum
     clang_ver=$(echo "${build_info}" | grep -A1 clang-ver | tail -n1)
     b_date=$(echo "${build_info}" | grep -A1 date | tail -n1)
     llvm_c=$(echo "${build_info}" | grep -A1 llvm-commit | tail -n1)
@@ -223,63 +241,68 @@ sync_tar() {
     echo "Build size: ${t_size}"
     echo "Build sha256sum: ${t_shasum}"
 
+    local host_glibc
     host_glibc="$(ldd --version | head -n1 | grep -oE '[^ ]+$')"
 
     if [[ ${host_glibc//./} -lt ${t_glibc//./} ]]; then
-        printlog "Warning: host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version (${t_glibc})"
-        printlog "Workaround this by patching toolchain using '${SCRIPT_NAME} --patch=glibc'"
+        msg_warn "Host glibc ($(ldd --version | head -n1 | grep -oE '[^ ]+$')) is older than the minimum required version (${t_glibc})"
+        msg_info "Workaround this by patching toolchain using '${SCRIPT_NAME} --patch=glibc'"
     fi
 
-    printlog "Fetching build tar..."
+    msg_info "Fetching build tar..."
     if [[ $DL_UTILITY == "axel" ]]; then
         axel "${AXEL_ARGS[@]}" "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/${r_tag}/neutron-clang-${r_tag}.tar.zst"
     else
         wget "${WGET_ARGS[@]}" "https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/${r_tag}/neutron-clang-${r_tag}.tar.zst"
     fi
 
-    printlog "Checking file integrity of the tar..."
+    msg_info "Checking file integrity of the tar..."
     if ! echo "${t_shasum} neutron-clang-${r_tag}.tar.zst" | sha256sum -c -; then
-        printlog "Error: File integrity check failed" >&2
-        exit 1
+        msg_error "Error: File integrity check failed"
     fi
 
-    printlog "Extracting tar..."
+    msg_info "Extracting tar..."
     tar -I zstd -xf "neutron-clang-${r_tag}.tar.zst"
 
     echo "${build_info}" >"build.info"
     echo -e "\n[tag]\n${r_tag}" >>"build.info"
 
-    printlog "Cleaning up..."
+    msg_info "Cleaning up..."
     rm -rf "neutron-clang-${r_tag}.tar.zst"
+
+    msg_success "Toolchain tag: ${r_tag} synced successfully"
 }
 
 # A function to delete toolchain files
 delete() {
+    local c_dir yn
     c_dir=$(pwd)
-    printlog "Cleaning toolchain files..."
-    echo "Everything in ${c_dir}/ will be deleted!"
+    msg_info "This will delete all toolchain files in ${c_dir}/"
 
     # Message about excluding the script itself if LOCAL_SCRIPT is 1
     if [[ ${LOCAL_SCRIPT} -eq 1 ]]; then
-        echo "Except this script itself: ${SCRIPT_NAME}"
+        msg_info "The AntMan script (${SCRIPT_NAME}) will be preserved"
     fi
 
     # Confirm deletion
     if [[ ${NOCONFIRM} -eq 0 ]]; then
         while true; do
-            read -rp "Proceed? [Y/N] " yn
+            read -rp "Proceed with deletion? [Y/N] " yn
             case ${yn} in
                 [Yy]*)
-                    printlog "Cleaning..."
                     break
                     ;;
-                [Nn]*) exit 0 ;;
-                *) echo "Please answer yes or no." ;;
+                [Nn]*)
+                    exit 0
+                    ;;
+                *)
+                    echo "Invalid input, use Y or N to answer."
+                    ;;
             esac
         done
-    else
-        printlog "Cleaning..."
     fi
+
+    msg_info "Deleting toolchain files..."
 
     # Perform the deletion
     if [[ ${LOCAL_SCRIPT} -eq 1 ]]; then
@@ -287,12 +310,15 @@ delete() {
     else
         find . -delete
     fi
+
+    msg_success "Toolchain files deleted successfully"
 }
 
 # A function to install toolchain updates
 upgrade_build() {
-    printlog "Checking for system requirements..."
-    pkg_check "wget"
+    msg_info "Checking dependencies"
+    check_dependency "wget"
+    local l_tag r_tag yn
 
     # A function to compare timestamps
     compare_tags() {
@@ -316,123 +342,129 @@ upgrade_build() {
         fi
     }
 
-    printlog "Checking for updates..."
+    msg_info "Checking for updates..."
     l_tag=$(grep -A1 tag build.info | tail -n1)
     if [[ $1 == "latest" ]]; then
         r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
     else
         if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt" -O- >/dev/null; then
-            printlog "Error: $1 is not a valid tag"
-            exit 1
+            msg_error "Error: $1 is not a valid tag"
         fi
         r_tag=$1
     fi
     if [[ ${l_tag} == "${r_tag}" ]]; then
-        printlog "Nothing to do, Already up-to-date"
+        msg_info "Nothing to do, Already up-to-date"
         exit 0
-    elif compare_tags "${l_tag}" "${r_tag}"; then
-        printlog "New update found!"
-        echo "New tag: ${r_tag}"
-        if [[ ${NOCONFIRM} -eq 0 ]]; then
-            while true; do
-                read -rp "Do you want to upgrade the toolchain? [Y/N] " yn
-                case ${yn} in
-                    [Yy]*)
-                        break
-                        ;;
-                    [Nn]*)
-                        exit 0
-                        ;;
-                    *)
-                        echo "Invalid input, use Y or N to answer."
-                        ;;
-                esac
-            done
-        fi
-        printlog "Removing old toolchain files using ${SCRIPT_NAME} --delete"
-        delete
-        printlog "Downloading new toolchain build using ${SCRIPT_NAME} --sync=${r_tag}"
-        sync_tar "${r_tag}"
-        echo -e "\nToolchain upgraded to ${r_tag} build!"
-    else
-        printlog "Error: The requested tag (${r_tag}) is older than the installed toolchain build (${l_tag})"
-        exit 1
+    elif ! compare_tags "${l_tag}" "${r_tag}"; then
+        msg_error "The requested tag (${r_tag}) is older than the installed toolchain build (${l_tag})"
     fi
+
+    msg_info "New update found: ${l_tag} → ${r_tag}"
+    if [[ ${NOCONFIRM} -eq 0 ]]; then
+        while true; do
+            read -rp "Do you want to upgrade the toolchain? [Y/N] " yn
+            case ${yn} in
+                [Yy]*)
+                    break
+                    ;;
+                [Nn]*)
+                    exit 0
+                    ;;
+                *)
+                    echo "Invalid input, use Y or N to answer."
+                    ;;
+            esac
+        done
+    fi
+    msg_info "Removing old toolchain files using ${SCRIPT_NAME} --delete"
+    delete
+    msg_info "Downloading new toolchain build using ${SCRIPT_NAME} --sync=${r_tag}"
+    sync_tar "${r_tag}"
+    msg_success "Toolchain upgraded to ${r_tag}"
 }
 
 # A function to get toolchain info
 show_info() {
-    printlog "Getting toolchain information from build.info..."
-    if [[ -f "build.info" ]]; then
-        echo ""
-        echo "Build date: $(grep -A1 date build.info | tail -n1)"
-        echo "Build tag: $(grep -A1 tag build.info | tail -n1)"
-        echo "Clang version: $(grep -A1 clang-ver build.info | tail -n1)"
-        echo "LLVM commit at: $(grep -A1 llvm-commit build.info | tail -n1)"
-        echo "Binutils version: $(grep -A1 binutils-ver build.info | tail -n1)"
-        echo "Binutils commit at: $(grep -A1 binutils-commit build.info | tail -n1)"
-        echo "Glibc requirement: $(grep -A1 host-glibc build.info | tail -n1)"
-    else
-        printlog "Error: build.info not found! Resync the toolchain."
-        exit 1
+    if [[ ! -f "build.info" ]]; then
+        msg_error "build.info not found. Please sync the toolchain first"
     fi
+    local binutils_ver
+    echo "Build date: $(grep -A1 date build.info | tail -n1)"
+    echo "Build tag: $(grep -A1 tag build.info | tail -n1)"
+    echo "Clang version: $(grep -A1 clang-ver build.info | tail -n1)"
+    echo "LLVM commit at: $(grep -A1 llvm-commit build.info | tail -n1)"
+    binutils_ver="$(grep -A1 binutils-ver build.info | tail -n1)"
+    if [[ -n ${binutils_ver} ]]; then
+        echo "Binutils Version: ${binutils_ver}"
+        echo "Binutils commit at: $(grep -A1 binutils-commit build.info | tail -n1)"
+    fi
+    echo "Glibc requirement: $(grep -A1 host-glibc build.info | tail -n1)"
 }
 
 # A function to BOLT/un-BOLT toolchain
 boltify() {
+    if [[ ! -d "bin" ]]; then
+        msg_error "Toolchain bin directory not found. Please sync the toolchain first"
+    fi
+
     CLANG_BIN=$(basename "$(readlink -f bin/clang)")
     if [[ $1 == "bolt" ]]; then
+        msg_info "Applying BOLT optimization"
         if [[ -f "bin/${CLANG_BIN}.bolt" ]]; then
             if [[ -f "bin/${CLANG_BIN}" ]]; then
                 mv bin/"${CLANG_BIN}" bin/"${CLANG_BIN}.org"
                 mv bin/"${CLANG_BIN}.bolt" bin/"${CLANG_BIN}"
             else
-                printlog "Error: 'bin/${CLANG_BIN}' not found!"
+                msg_error "'bin/${CLANG_BIN}' not found!"
             fi
         else
-            printlog "Error: 'bin/${CLANG_BIN}.bolt' not found!"
+            msg_error "'bin/${CLANG_BIN}.bolt' not found!"
         fi
         if [[ -f "bin/lld.bolt" ]]; then
             if [[ -f "bin/lld" ]]; then
                 mv bin/lld bin/"lld.org"
                 mv bin/"lld.bolt" bin/lld
             else
-                printlog "Error: 'bin/lld' not found!"
+                msg_error "'bin/lld' not found!"
             fi
         else
-            printlog "Warning: 'bin/lld.bolt' not found, Skipped!"
+            msg_warn "'bin/lld.bolt' not found, Skipped!"
         fi
+        msg_success "BOLT optimization applied successfully"
     elif [[ $1 == "unbolt" ]]; then
+        msg_info "Removing BOLT optimization"
         if [[ -f "bin/${CLANG_BIN}.org" ]]; then
             if [[ -f "bin/${CLANG_BIN}" ]]; then
                 mv bin/"${CLANG_BIN}" bin/"${CLANG_BIN}.bolt"
                 mv bin/"${CLANG_BIN}.org" bin/"${CLANG_BIN}"
             else
-                printlog "Error: 'bin/${CLANG_BIN}' not found!"
+                msg_error "'bin/${CLANG_BIN}' not found!"
             fi
         else
-            printlog "Error: 'bin/${CLANG_BIN}.org' not found!"
+            msg_error "'bin/${CLANG_BIN}.org' not found!"
         fi
         if [[ -f "bin/lld.org" ]]; then
             if [[ -f "bin/lld" ]]; then
                 mv bin/lld bin/"lld.bolt"
                 mv bin/"lld.org" bin/lld
             else
-                printlog "Error: 'bin/lld' not found!"
+                msg_error "'bin/lld' not found!"
             fi
         else
-            printlog "Warning: 'bin/lld.org' not found, Skipped!"
+            msg_warn "'bin/lld.org' not found, Skipped!"
         fi
+        msg_success "BOLT optimization removed successfully"
     fi
 }
 
 # A function to patch toolchain to workaround old glibc issues
 glibc_patcher() {
-    printlog "Checking for system requirements..."
-    pkg_check "wget"
-    pkg_check "bsdtar"
+    msg_info "Checking dependencies"
+    check_dependency "wget"
+    check_dependency "bsdtar"
     WORK_DIR=$1
     axel_check
+    local PATCHELF_DIR PATCHELF_VER GLIBC_DIR
 
     fetch_and_uncompress() {
         local url=$1
@@ -452,13 +484,13 @@ glibc_patcher() {
         rm -f "${tmp_file}"
     }
 
-    printlog "Downloading patchelf binary from NixOS repos..."
+    msg_info "Downloading patchelf binary from NixOS repos..."
     PATCHELF_VER="0.18.0"
     PATCHELF_DIR=$(mktemp -d)
 
     fetch_and_uncompress "https://github.com/NixOS/patchelf/releases/download/${PATCHELF_VER}/patchelf-${PATCHELF_VER}-x86_64.tar.gz" "${PATCHELF_DIR}"
 
-    printlog "Downloading latest libs from ArchLinux repos..."
+    msg_info "Downloading latest libs from ArchLinux repos..."
     GLIBC_DIR="${HOME}/.neutron-tc/glibc"
     rm -rf "${GLIBC_DIR}" && mkdir -p "${GLIBC_DIR}"
 
@@ -471,22 +503,21 @@ glibc_patcher() {
     patch_binaries() {
         local dir=$1
 
+        msg_info "Patching binaries in: $dir"
+
         find "$dir" -type f -exec file {} \; | grep 'ELF .* interpreter' | awk '{print $1}' | sed 's/.$//' | while read -r bin; do
             echo "Patching: $bin"
             "${PATCHELF_DIR}"/bin/patchelf --set-rpath "${GLIBC_DIR}/usr/lib" --force-rpath --set-interpreter "${GLIBC_DIR}/usr/lib/ld-linux-x86-64.so.2" "$bin"
         done
     }
 
-    printlog "Patching libs..."
     patch_binaries "${GLIBC_DIR}"
-
-    printlog "Patching Toolchain..."
     patch_binaries "${WORK_DIR}"
 
-    printlog "Cleaning..."
+    msg_info "Cleaning up temporary files"
     rm -rf "${PATCHELF_DIR}"
 
-    printlog "Done"
+    msg_success "glibc compatibility patch applied successfully"
 }
 
 LOCAL_SCRIPT=1
@@ -511,6 +542,7 @@ fi
 
 WGET_ARGS=("--quiet")
 AXEL_ARGS=()
+
 # Extract wget major version and use supported progress flag accordingly.
 # Also set axel args according to flags passed by user.
 if [[ ! $* =~ "--noprogress" ]]; then
@@ -526,7 +558,7 @@ else
 fi
 
 if [[ $# -ne 0 ]] && antman_update_check &>/dev/null; then
-    printlog "An update is available for the antman..."
+    msg_info "An update is available for the antman..."
     echo "Consider upgrading by ${SCRIPT_NAME} --antman-update"
 fi
 
@@ -538,7 +570,6 @@ for arg in "$@"; do
                 tag="latest"
             fi
             sync_tar "${tag}"
-            echo -e "\nToolchain build ${r_tag} synced!"
             exit 0
             ;;
         "-U"* | "--update"*)
@@ -552,15 +583,13 @@ for arg in "$@"; do
         "-P"* | "--patch"*)
             option="${arg#*=}"
             if [[ ${option} == "-P" ]] || [[ ${option} == "--patch" ]]; then
-                echo "Error: ${option} requires an argument."
-                exit 1
+                msg_error "${option} requires an argument."
             elif [[ ${option} == "bolt" ]] || [[ ${option} == "unbolt" ]]; then
                 boltify "${option}"
             elif [[ ${option} == "glibc" ]]; then
                 glibc_patcher "$(pwd)"
             else
-                echo -e "\e[1mError: Invalid argument '$1'\e[0m"
-                exit 1
+                msg_error "Invalid argument $1"
             fi
             exit 0
             ;;
@@ -585,8 +614,7 @@ for arg in "$@"; do
             exit 0
             ;;
         *)
-            echo "Invalid argument passed: '${arg}' Run '${SCRIPT_NAME} --help' to view available options."
-            exit 1
+            msg_error "Invalid argument passed: '${arg}' Run '${SCRIPT_NAME} --help' to view available options."
             ;;
     esac
 done
