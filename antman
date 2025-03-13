@@ -461,7 +461,7 @@ boltify() {
 glibc_patcher() {
     msg_info "Checking dependencies"
     check_dependency "wget"
-    check_dependency "bsdtar"
+    check_dependency "tar"
     WORK_DIR=$1
     axel_check
     local PATCHELF_DIR PATCHELF_VER GLIBC_DIR
@@ -480,7 +480,7 @@ glibc_patcher() {
             wget -q -O "${tmp_file}" "${url}"
         fi
 
-        bsdtar -C "${dest_dir}" -xf "${tmp_file}"
+        tar -C "${dest_dir}" -xf "${tmp_file}"
         rm -f "${tmp_file}"
     }
 
