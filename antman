@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Written by: dakkshesh07
-# AntMan v3.0 (A Nonsensical Toolchain Manager)
-# Copyright (c) 2022 Dakkshesh <dakkshesh5@gmail.com>
+# AntMan (A Nonsensical Toolchain Manager)
+# Copyright (c) 2025 Dakkshesh <dakkshesh5@gmail.com>
 #
 #			GNU GENERAL PUBLIC LICENSE
 #			 Version 3, 29 June 2007
@@ -12,7 +11,7 @@
 set -e
 shopt -s inherit_errexit
 
-ANTMAN_VER="v3.0"
+ANTMAN_VER="v3.1"
 
 # ===== Main message functions ===== #
 msg_common() {
