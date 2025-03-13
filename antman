@@ -205,19 +205,20 @@ sync_tar() {
     check_dependency "wget"
     check_dependency "sha256sum"
     axel_check
+    local r_tag="$1"
 
     msg_info "Fetching build info..."
-    local r_tag build_info
 
-    if [[ $1 == "latest" ]]; then
+    if [[ $r_tag == "latest" ]]; then
         r_tag=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/latest.txt" | grep -A1 tag | tail -n1)
         msg_info "Using latest Tag: ${r_tag}"
     else
-        if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$1-info.txt" -O- >/dev/null; then
-            msg_error "Invalid tag: $1"
+        if ! wget -q "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/$r_tag-info.txt" -O- >/dev/null; then
+            msg_error "Invalid tag: $r_tag"
         fi
     fi
 
+    local build_info
     build_info=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt")
 
     local clang_ver b_date llvm_c binutils_ver binutils_c t_glibc t_size t_shasum
@@ -280,8 +281,8 @@ delete() {
     msg_info "This will delete all toolchain files in ${c_dir}/"
 
     # Message about excluding the script itself if LOCAL_SCRIPT is 1
-    if [[ ${LOCAL_SCRIPT} -eq 1 ]]; then
-        msg_info "The AntMan script (${SCRIPT_NAME}) will be preserved"
+    if [[ ${LOCAL_SCRIPT} -eq 1 ]] && [[ -f "${c_dir}/${SCRIPT_NAME}" ]]; then
+        msg_info "The AntMan script (${c_dir}/${SCRIPT_NAME}) will be preserved"
     fi
 
     # Confirm deletion
