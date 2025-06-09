@@ -8,41 +8,29 @@
 # Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
 # Everyone is permitted to copy and distribute verbatim copies
 # of this license document, but changing it is not allowed.
-set -e
+set -euo pipefail
 shopt -s inherit_errexit
 
 ANTMAN_VER="v3.1"
 
-# ===== Main message functions ===== #
+# ===== Utility functions ===== #
 msg_common() {
     local MSG_BOLD="\e[1m"
     local MSG_RESET="\e[0m"
     local MSG_TYPE=$1
-    echo -e "${MSG_BOLD}${MSG_TYPE}: ${2}${MSG_RESET}"
+    shift
+    echo -e "${MSG_BOLD}${MSG_TYPE}: $*${MSG_RESET}"
 }
 
-# Print info message
-msg_info() {
-    msg_common "INFO" "$1"
-}
-
-# Print success message
-msg_success() {
-    msg_common "SUCCESS" "$1"
-}
-
-# Print warning message
-msg_warn() {
-    msg_common "WARNING" "$1"
-}
-
-# Print error message
+msg_info() { msg_common "INFO" "$@"; }
+msg_success() { msg_common "SUCCESS" "$@"; }
+msg_warn() { msg_common "WARNING" "$@"; }
 msg_error() {
-    msg_common "ERROR" "$1"
+    msg_common "ERROR" "$@"
     exit 1
 }
 
-# A function to showcase the commands & options provided for args-based usage.
+# ===== Help menu ===== #
 helpmenu() {
     echo -e "\e[1m
 A Nonsensical Toolchain Manager ${ANTMAN_VER}, by Dakkshesh\e[0m
@@ -55,7 +43,7 @@ Commands :
                   To sync to a specific build pass appropriate build tag in <tag>.
                   Example: ${SCRIPT_NAME} --sync
                   Example: ${SCRIPT_NAME} --sync=latest
-                  Exmaple: ${SCRIPT_NAME} --sync=42069420
+                  Example: ${SCRIPT_NAME} --sync=42069420
 
  -S=<tag>       : Alias for --sync=<tag>
 
@@ -64,16 +52,16 @@ Commands :
                   To upgrade to a specific build pass appropriate build tag in <tag>.
                   Example: ${SCRIPT_NAME} --update
                   Example: ${SCRIPT_NAME} --update=latest
-                  Exmaple: ${SCRIPT_NAME} --update=42069420
+                  Example: ${SCRIPT_NAME} --update=42069420
 
  -U=<tag>       : Alias for --update=<tag>
 
  --patch=[bolt|unbolt|glibc]
-                : Patch synced toolchain as per requirments.
-                  Curerently supported patches:
+                : Patch synced toolchain as per requirements.
+                  Supported patches:
                     unbolt: Patch toolchain to use non BOLT optimized binaries.
                     bolt: Patch toolchain to use BOLT optimized binaries (default).
-                    glibc: Patch toolchain to workaround glibc requirments.
+                    glibc: Patch toolchain to workaround glibc requirements.
                   Example: ${SCRIPT_NAME} --patch=unbolt
                   Example: ${SCRIPT_NAME} --patch=bolt
                   Example: ${SCRIPT_NAME} --patch=glibc
@@ -89,7 +77,7 @@ Commands :
  -A             : Alias for --antman-update.
 
  --delete       : Delete all clang related files.
-                  AntMan script itself wont be deleted when this command is ran.
+                  AntMan script itself won't be deleted when this command is run.
 
  -D             : Alias for --delete
 
@@ -114,12 +102,13 @@ cmd_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# A function to verify dependencies
+# ===== Dependency checks ===== #
 check_dependency() {
-    if [[ -n $1 ]] && cmd_exists "$1"; then
-        echo "Checking for $1: ✓"
+    local dep=$1
+    if cmd_exists "$dep"; then
+        return 0
     else
-        msg_error "$1 is not installed, please install it and try again."
+        msg_error "$dep is not installed, please install it and try again."
     fi
 }
 
@@ -217,27 +206,36 @@ sync_tar() {
         fi
     fi
 
-    local build_info
-    build_info=$(wget -q --output-document - "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt")
+    # Use a tempfile for build.info cache
+    local build_info_tmp
+    build_info_tmp=$(mktemp)
+    if ! wget -q -O "$build_info_tmp" "https://raw.githubusercontent.com/Neutron-Toolchains/clang-build-catalogue/main/${r_tag}-info.txt"; then
+        rm -f "$build_info_tmp"
+        msg_error "Failed to download build info for tag: $r_tag"
+    fi
+    if [[ ! -s "$build_info_tmp" ]]; then
+        rm -f "$build_info_tmp"
+        msg_error "Downloaded build info is empty for tag: $r_tag"
+    fi
 
     local clang_ver b_date llvm_c binutils_ver binutils_c t_glibc t_size t_shasum
-    clang_ver=$(echo "${build_info}" | grep -A1 clang-ver | tail -n1)
-    b_date=$(echo "${build_info}" | grep -A1 date | tail -n1)
-    llvm_c=$(echo "${build_info}" | grep -A1 llvm-commit | tail -n1)
-    binutils_ver=$(echo "${build_info}" | grep -A1 binutils-ver | tail -n1)
-    binutils_c=$(echo "${build_info}" | grep -A1 binutils-commit | tail -n1)
-    t_glibc=$(echo "${build_info}" | grep -A1 host-glibc | tail -n1)
-    t_size=$(echo "${build_info}" | grep -A1 size | tail -n1)
-    t_shasum=$(echo "${build_info}" | grep -A1 shasum | tail -n1)
+    clang_ver=$(grep -A1 clang-ver "$build_info_tmp" | tail -n1)
+    b_date=$(grep -A1 date "$build_info_tmp" | tail -n1)
+    llvm_c=$(grep -A1 llvm-commit "$build_info_tmp" | tail -n1)
+    t_glibc=$(grep -A1 host-glibc "$build_info_tmp" | tail -n1)
+    t_size=$(grep -A1 size "$build_info_tmp" | tail -n1)
+    t_shasum=$(grep -A1 shasum "$build_info_tmp" | tail -n1)
 
     echo "Build Date: ${b_date}"
     echo "Clang Version: ${clang_ver}"
     echo "LLVM commit at: ${llvm_c}"
-    if [[ -n ${binutils_ver} ]]; then
+    if grep -q "binutils-ver" "${build_info_tmp}"; then
+        binutils_ver=$(grep -A1 binutils-ver "$build_info_tmp" | tail -n1)
+        binutils_c=$(grep -A1 binutils-commit "$build_info_tmp" | tail -n1)
         echo "Binutils Version: ${binutils_ver}"
         echo "Binutils commit at: ${binutils_c}"
     fi
-    echo "Glibc requirement: ${t_glibc}"
+    echo "Glibc requirement: ${t_glibc}" 
     echo "Build size: ${t_size}"
     echo "Build sha256sum: ${t_shasum}"
 
@@ -258,14 +256,25 @@ sync_tar() {
 
     msg_info "Checking file integrity of the tar..."
     if ! echo "${t_shasum} neutron-clang-${r_tag}.tar.zst" | sha256sum -c -; then
+        rm -f "$build_info_tmp"
         msg_error "Error: File integrity check failed"
     fi
 
     msg_info "Extracting tar..."
     tar -I zstd -xf "neutron-clang-${r_tag}.tar.zst"
 
-    echo "${build_info}" >"build.info"
-    echo -e "\n[tag]\n${r_tag}" >>"build.info"
+    # Track extracted files and store in build.info
+    msg_info "Tracking extracted files..."
+    local extracted_files
+    extracted_files=$(tar -I zstd -tf "neutron-clang-${r_tag}.tar.zst")
+
+    # Append tag and filelist to the tempfile
+    echo -e "\n[tag]\n${r_tag}" >>"$build_info_tmp"
+    echo -e "\n[filelist]" >>"$build_info_tmp"
+    echo "$extracted_files" >>"$build_info_tmp"
+
+    # Move tempfile to build.info
+    mv "$build_info_tmp" "build.info"
 
     msg_info "Cleaning up..."
     rm -rf "neutron-clang-${r_tag}.tar.zst"
@@ -304,11 +313,33 @@ delete() {
 
     msg_info "Deleting toolchain files..."
 
-    # Perform the deletion
-    if [[ ${LOCAL_SCRIPT} -eq 1 ]]; then
-        find . ! -name "${SCRIPT_NAME}" -delete
+    # Try to use filelist from build.info if present
+    if [[ -f "build.info" ]] && grep -q "^\[filelist\]" build.info; then
+        local in_filelist=0
+        while IFS= read -r line; do
+            if [[ $in_filelist -eq 1 ]]; then
+                # Stop if next section starts
+                [[ $line =~ ^\[.*\]$ ]] && break
+                # Skip empty lines
+                [[ -z $line ]] && continue
+                # Don't delete the script itself
+                if [[ ${LOCAL_SCRIPT} -eq 1 && $line == "${SCRIPT_NAME}" ]]; then
+                    continue
+                fi
+                # Remove file or directory
+                if [[ -e $line ]]; then
+                    rm -rf -- "$line"
+                fi
+            fi
+            [[ $line == "[filelist]" ]] && in_filelist=1
+        done <build.info
     else
-        find . -delete
+        # Fallback to old method
+        if [[ ${LOCAL_SCRIPT} -eq 1 ]]; then
+            find . ! -name "${SCRIPT_NAME}" -delete
+        else
+            find . -delete
+        fi
     fi
 
     msg_success "Toolchain files deleted successfully"
